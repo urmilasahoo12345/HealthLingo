@@ -1,0 +1,42 @@
+{
+  "hiv": {
+    "info": "HIV (Human Immunodeficiency Virus) weakens the immune system. Causes: spread through unprotected sex, blood, or mother-to-child. Prevention: safe sex, clean needles, screening. Remedies: Antiretroviral therapy (ART).",
+    "keywords": ["hiv", "aids", "hiv prevention", "hiv symptoms", "aids treatment"]
+  },
+  "malaria": {
+    "info": "Malaria is caused by Plasmodium parasites spread by Anopheles mosquitoes. Prevention: mosquito nets, repellents, eliminating stagnant water. Remedies: antimalarial drugs like chloroquine, ACTs.",
+    "keywords": ["malaria", "malaria symptoms", "malaria prevention", "malaria treatment"]
+  },
+  "tuberculosis": {
+    "info": "Tuberculosis (TB) is caused by Mycobacterium tuberculosis. Spread: air when patients cough/sneeze. Prevention: BCG vaccine, early treatment. Remedies: long-course antibiotics (6 months).",
+    "keywords": ["tuberculosis", "tb", "tb symptoms", "tb prevention"]
+  },
+  "diabetes": {
+    "info": "Diabetes is a chronic condition where blood sugar is too high. Causes: genetics, poor diet, obesity. Prevention: healthy diet, exercise, weight control. Remedies: insulin, oral medicines, lifestyle change.",
+    "keywords": ["diabetes", "sugar disease", "diabetes prevention", "diabetes treatment"]
+  },
+  "hypertension": {
+    "info": "Hypertension (high blood pressure) increases risk of heart disease. Causes: stress, salt, obesity. Prevention: low-salt diet, exercise, avoid smoking. Remedies: antihypertensive medicines, lifestyle change.",
+    "keywords": ["hypertension", "blood pressure", "bp high", "bp prevention"]
+  },
+  "covid-19": {
+    "info": "COVID-19 is caused by coronavirus SARS-CoV-2. Spread: respiratory droplets. Prevention: masks, distancing, vaccination. Remedies: supportive care, antivirals, oxygen for severe cases.",
+    "keywords": ["covid", "corona", "covid-19", "covid prevention", "covid vaccine"]
+  },
+  "cholera": {
+    "info": "Cholera is a diarrheal disease from Vibrio cholerae via contaminated water/food. Prevention: safe water, sanitation, vaccine. Remedies: oral rehydration salts, IV fluids, antibiotics.",
+    "keywords": ["cholera", "cholera symptoms", "cholera prevention"]
+  },
+  "asthma": {
+    "info": "Asthma is a chronic airway disease. Causes: allergies, pollution, exercise. Prevention: avoid triggers. Remedies: inhalers (bronchodilators, steroids).",
+    "keywords": ["asthma", "asthma symptoms", "asthma prevention", "asthma inhaler"]
+  },
+  "cancer": {
+    "info": "Cancer is uncontrolled cell growth. Causes: genetics, smoking, alcohol, infections. Prevention: healthy lifestyle, screenings, vaccines (HPV, HBV). Remedies: surgery, chemo, radiation, immunotherapy.",
+    "keywords": ["cancer", "tumor", "cancer prevention", "cancer treatment"]
+  },
+  "dengue": {
+    "info": "Dengue is a viral infection spread by Aedes mosquitoes. Symptoms: fever, rash, pain. Prevention: mosquito control, nets. Remedies: rest, fluids, paracetamol (avoid aspirin).",
+    "keywords": ["dengue", "dengue fever", "dengue symptoms", "dengue prevention"]
+  }
+}
