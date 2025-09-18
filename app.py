@@ -2,15 +2,17 @@ import os
 import json
 import time
 import streamlit as st
-from dotenv import load_dotenv
 from google import genai
 from deep_translator import GoogleTranslator
 
 # ================================
-# Load environment variables
+# Load Gemini API Key from Streamlit secrets
 # ================================
-load_dotenv()
-gemini_key = os.getenv("GEMINI_API_KEY", "YOUR_GEMINI_KEY_HERE")
+gemini_key = os.getenv("GEMINI_API_KEY")
+
+if not gemini_key:
+    st.error("⚠️ GEMINI_API_KEY not found in Streamlit secrets.")
+    st.stop()
 
 # Setup Gemini client
 client = genai.Client(api_key=gemini_key)
@@ -36,12 +38,12 @@ def find_answer_from_faqs(user_query: str):
 # ================================
 def fetch_from_gemini(user_query: str, retries=3):
     prompt = f"""
-    You are a health assistant. The user asked: {user_query}
+You are a health assistant. The user asked: {user_query}
 
-    Respond in clear, concise English with reliable health info 
-    about causes, prevention, and remedies if it's disease-related. 
-    If it's not health-related, politely say so.
-    """
+Respond in clear, concise English with reliable health info 
+about causes, prevention, and remedies if it's disease-related. 
+If it's not health-related, politely say so.
+"""
     for attempt in range(retries):
         try:
             response = client.models.generate_content(
@@ -76,100 +78,59 @@ def translate_to_language(text, lang_code):
 # Streamlit UI
 # ================================
 st.set_page_config(page_title="HealthLingo", page_icon="💬")
-
-# ---- Global CSS ----
 st.markdown(
-    """
-    <style>
-    /* Bright glowing title */
-    .glow-title {
-        text-align: center;
-        font-size: 32px;
-        font-weight: bold;
-        color: white;
-        text-shadow: 0px 0px 10px #00ff00, 0px 0px 15px #00ccff, 0px 0px 20px #ffffff;
-        margin-bottom: 20px;
-    }
-
-    /* Glow effect for Clear Chat button */
-    div[data-testid="stButton"] > button {
-        background-color: #111111;
-        color: white;
-        border-radius: 10px;
-        border: 1px solid #00ffcc;
-        box-shadow: 0px 0px 12px #00ffcc;
-        transition: 0.3s;
-    }
-    div[data-testid="stButton"] > button:hover {
-        background-color: #00ffcc;
-        color: black;
-        box-shadow: 0px 0px 22px #00ffcc;
-    }
-    </style>
-    """,
+    "<h2 style='text-align:center;'>"
+    "<span style='color:green;'>Health</span>"
+    "<span style='color:blue;'>Lingo</span> – Your AI Health Assistant</h2>",
     unsafe_allow_html=True
 )
 
-# ---- Title ----
-st.markdown(
-    "<h2 class='glow-title'>"
-    "<span style='color:lime;'>Health</span>"
-    "<span style='color:cyan;'>Lingo</span> – Your AI Health Assistant</h2>",
-    unsafe_allow_html=True
-)
-
-# --- Clear Chat Button ---
+# Clear chat button
 if st.button("🗑️ Clear Chat"):
     st.session_state.messages = []
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# ================================
 # Display chat history
-# ================================
 for msg in st.session_state.messages:
     if msg["role"] == "user":
         st.markdown(
-            f"""
-            <div style='display:flex; justify-content:flex-end; margin:5px;'>
-                <div style='background-color:#003366; color:white; padding:10px; border-radius:15px; max-width:70%;
-                            box-shadow:0px 1px 3px rgba(0,0,0,0.3); white-space:pre-wrap;'>
-                    🧑 {msg['content']}
-                </div>
-            </div>
-            """,
+            f"<div style='display:flex; justify-content:flex-end; margin:5px;'>"
+            f"<div style='background-color:#003366; color:white; padding:10px; border-radius:15px; max-width:70%; "
+            f"box-shadow:0px 1px 3px rgba(0,0,0,0.3); white-space:pre-wrap;'>🧑 {msg['content']}</div></div>",
             unsafe_allow_html=True,
         )
     else:
         st.markdown(
-            f"""
-            <div style='display:flex; justify-content:flex-start; margin:5px;'>
-                <div style='background-color:#000000; color:white; padding:10px; border-radius:15px; max-width:70%;
-                            box-shadow:0px 1px 3px rgba(0,0,0,0.3); white-space:pre-wrap;'>
-                    🤖 {msg['content']}
-                </div>
-            </div>
-            """,
+            f"<div style='display:flex; justify-content:flex-start; margin:5px;'>"
+            f"<div style='background-color:#000000; color:white; padding:10px; border-radius:15px; max-width:70%; "
+            f"box-shadow:0px 1px 3px rgba(0,0,0,0.3); white-space:pre-wrap;'>🤖 {msg['content']}</div></div>",
             unsafe_allow_html=True,
         )
 
-# ================================
 # Input box
-# ================================
 user_input = st.chat_input("Ask me about any disease, symptoms, or prevention...")
 
 if user_input:
     st.session_state.messages.append({"role": "user", "content": user_input})
+
+    # 1. Check FAQs
     answer_en = find_answer_from_faqs(user_input)
+
+    # 2. If not found, use Gemini
     if not answer_en:
         answer_en = fetch_from_gemini(user_input)
+
+    # 3. Fallback if Gemini fails
     if not answer_en or "Error" in answer_en:
         answer_en = find_answer_from_faqs(user_input) or "Sorry, I cannot fetch this right now."
+
+    # 4. Translate to Hindi
     answer_hi = translate_to_language(answer_en, "hi")
+
+    # Final bot reply
     bot_reply = f"**English:** {answer_en}\n\n🌍 **Hindi:** {answer_hi}"
     st.session_state.messages.append({"role": "bot", "content": bot_reply})
+
     st.rerun()
-
-
-
