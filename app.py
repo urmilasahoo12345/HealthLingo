@@ -77,25 +77,7 @@ def translate_to_language(text, lang_code):
 # ================================
 # Streamlit UI
 # ================================
-st.set_page_config(page_title="HealthLingo", page_icon="💬", layout="wide")
-
-# Sidebar - Language Selection
-st.sidebar.header("🌍 Language Settings")
-language_options = {
-    "English": "en",
-    "Hindi": "hi",
-    "Odia": "or",
-    "Bengali": "bn",
-    "Tamil": "ta",
-    "Telugu": "te",
-    "Marathi": "mr",
-    "Gujarati": "gu",
-    "Kannada": "kn",
-    "Malayalam": "ml",
-    "Urdu": "ur",
-}
-selected_language = st.sidebar.selectbox("Choose your language:", list(language_options.keys()))
-target_lang_code = language_options[selected_language]
+st.set_page_config(page_title="HealthLingo", page_icon="💬")
 
 # Custom Navbar with Logo
 st.markdown("""
@@ -110,7 +92,7 @@ st.markdown("""
             box-shadow: 0px 3px 6px rgba(0,0,0,0.2);
             position: sticky;
             top: 0;
-            z-index: 100;
+            z-index: 1000;
         }
         .navbar img {
             height: 40px;
@@ -149,7 +131,7 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-# Heading
+# Heading below navbar
 st.markdown(
     "<h2 style='text-align:center; margin-top:20px;'>"
     "<span style='color:green;'>Health</span>"
@@ -198,11 +180,11 @@ if user_input:
     if not answer_en or "Error" in answer_en:
         answer_en = find_answer_from_faqs(user_input) or "Sorry, I cannot fetch this right now."
 
-    # 4. Translate to selected language
-    translated_answer = answer_en if target_lang_code == "en" else translate_to_language(answer_en, target_lang_code)
+    # 4. Translate to Hindi
+    answer_hi = translate_to_language(answer_en, "hi")
 
     # Final bot reply
-    if target_lang_code == "en":
-        bot_reply = f"*English:* {answer_en}"
-    else:
-        bot_reply = f"*English:* {answer_en}\n\n🌍 *{selected_language}:*
+    bot_reply = f"*English:* {answer_en}\n\n🌍 *Hindi:* {answer_hi}"
+    st.session_state.messages.append({"role": "bot", "content": bot_reply})
+
+    st.rerun()
