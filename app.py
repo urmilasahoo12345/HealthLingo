@@ -11,7 +11,7 @@ from deep_translator import GoogleTranslator
 gemini_key = os.getenv("GEMINI_API_KEY")
 
 if not gemini_key:
-    st.error("⚠️ GEMINI_API_KEY not found in Streamlit secrets.")
+    st.error("⚠ GEMINI_API_KEY not found in Streamlit secrets.")
     st.stop()
 
 # Setup Gemini client
@@ -62,8 +62,8 @@ If it's not health-related, politely say so.
                 )
                 return response.text.strip()
             except Exception as e2:
-                return f"⚠️ Error fetching from Gemini: {str(e2)}"
-    return "⚠️ Could not fetch response from Gemini."
+                return f"⚠ Error fetching from Gemini: {str(e2)}"
+    return "⚠ Could not fetch response from Gemini."
 
 # ================================
 # Translator
@@ -77,16 +77,88 @@ def translate_to_language(text, lang_code):
 # ================================
 # Streamlit UI
 # ================================
-st.set_page_config(page_title="HealthLingo", page_icon="💬")
+st.set_page_config(page_title="HealthLingo", page_icon="💬", layout="wide")
+
+# Sidebar - Language Selection
+st.sidebar.header("🌍 Language Settings")
+language_options = {
+    "English": "en",
+    "Hindi": "hi",
+    "Odia": "or",
+    "Bengali": "bn",
+    "Tamil": "ta",
+    "Telugu": "te",
+    "Marathi": "mr",
+    "Gujarati": "gu",
+    "Kannada": "kn",
+    "Malayalam": "ml",
+    "Urdu": "ur",
+}
+selected_language = st.sidebar.selectbox("Choose your language:", list(language_options.keys()))
+target_lang_code = language_options[selected_language]
+
+# Custom Navbar with Logo
+st.markdown("""
+    <style>
+        .navbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: linear-gradient(90deg, #00b09b, #96c93d, #2193b0, #6dd5ed);
+            padding: 12px 20px;
+            border-radius: 10px;
+            box-shadow: 0px 3px 6px rgba(0,0,0,0.2);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .navbar img {
+            height: 40px;
+            margin-right: 10px;
+        }
+        .navbar .logo-text {
+            font-size: 22px;
+            font-weight: bold;
+            color: white;
+            font-family: 'Segoe UI', sans-serif;
+        }
+        .navbar-links a {
+            margin: 0 12px;
+            text-decoration: none;
+            font-size: 16px;
+            font-weight: 500;
+            color: white;
+            transition: 0.3s;
+        }
+        .navbar-links a:hover {
+            color: yellow;
+        }
+    </style>
+
+    <div class="navbar">
+        <div style="display:flex; align-items:center;">
+            <img src="https://img.icons8.com/color/96/medical-doctor.png" alt="HealthLingo Logo">
+            <span class="logo-text">HealthLingo</span>
+        </div>
+        <div class="navbar-links">
+            <a href="#">Home</a>
+            <a href="#">FAQs</a>
+            <a href="#">About</a>
+            <a href="#">Contact</a>
+        </div>
+    </div>
+""", unsafe_allow_html=True)
+
+# Heading
 st.markdown(
-    "<h2 style='text-align:center;'>"
+    "<h2 style='text-align:center; margin-top:20px;'>"
     "<span style='color:green;'>Health</span>"
     "<span style='color:blue;'>Lingo</span> – Your AI Health Assistant</h2>",
     unsafe_allow_html=True
 )
 
 # Clear chat button
-if st.button("🗑️ Clear Chat"):
+if st.button("🗑 Clear Chat"):
     st.session_state.messages = []
 
 if "messages" not in st.session_state:
@@ -126,11 +198,11 @@ if user_input:
     if not answer_en or "Error" in answer_en:
         answer_en = find_answer_from_faqs(user_input) or "Sorry, I cannot fetch this right now."
 
-    # 4. Translate to Hindi
-    answer_hi = translate_to_language(answer_en, "hi")
+    # 4. Translate to selected language
+    translated_answer = answer_en if target_lang_code == "en" else translate_to_language(answer_en, target_lang_code)
 
     # Final bot reply
-    bot_reply = f"**English:** {answer_en}\n\n🌍 **Hindi:** {answer_hi}"
-    st.session_state.messages.append({"role": "bot", "content": bot_reply})
-
-    st.rerun()
+    if target_lang_code == "en":
+        bot_reply = f"*English:* {answer_en}"
+    else:
+        bot_reply = f"*English:* {answer_en}\n\n🌍 *{selected_language}:*
