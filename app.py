@@ -79,11 +79,12 @@ def translate_to_language(text, lang_code):
 # ================================
 st.set_page_config(page_title="HealthLingo", page_icon="💬")
 
-# Custom Navbar with Logo
+# ✅ Responsive Navbar
 st.markdown("""
     <style>
         .navbar {
             display: flex;
+            flex-wrap: wrap; /* allow wrapping on mobile */
             align-items: center;
             justify-content: space-between;
             background: linear-gradient(90deg, #00b09b, #96c93d, #2193b0, #6dd5ed);
@@ -95,25 +96,42 @@ st.markdown("""
             z-index: 1000;
         }
         .navbar img {
-            height: 40px;
+            height: 35px;
             margin-right: 10px;
         }
         .navbar .logo-text {
-            font-size: 22px;
+            font-size: 20px;
             font-weight: bold;
             color: white;
             font-family: 'Segoe UI', sans-serif;
         }
+        .navbar-links {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-top: 8px;
+        }
         .navbar-links a {
-            margin: 0 12px;
+            margin: 6px 8px;
             text-decoration: none;
-            font-size: 16px;
+            font-size: 15px;
             font-weight: 500;
             color: white;
             transition: 0.3s;
         }
         .navbar-links a:hover {
             color: yellow;
+        }
+        /* ✅ Mobile responsive (stacked layout) */
+        @media (max-width: 600px) {
+            .navbar {
+                flex-direction: column;
+                text-align: center;
+            }
+            .navbar-links {
+                flex-direction: column;
+                margin-top: 10px;
+            }
         }
     </style>
 
@@ -188,3 +206,4 @@ if user_input:
     st.session_state.messages.append({"role": "bot", "content": bot_reply})
 
     st.rerun()
+
