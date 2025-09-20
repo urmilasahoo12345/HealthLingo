@@ -107,6 +107,11 @@ st.markdown("""
             .navbar { flex-direction: column; text-align: center; }
             .navbar-links { flex-direction: column; margin-top: 10px; }
         }
+        .replay-btn {
+            cursor: pointer; 
+            font-size: 18px; 
+            margin-left: 5px;
+        }
     </style>
 
     <div class="navbar">
@@ -139,9 +144,9 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 
 # ================================
-# Display chat messages
+# Display chat messages with replay
 # ================================
-for msg in st.session_state.messages:
+for i, msg in enumerate(st.session_state.messages):
     if msg["role"] == "user":
         st.markdown(
             f"<div style='display:flex; justify-content:flex-end; margin:5px;'>"
@@ -150,11 +155,17 @@ for msg in st.session_state.messages:
             unsafe_allow_html=True,
         )
     else:
+        # Bot message with replay button
+        safe_text = msg['content'].replace('`','')
         st.markdown(
-            f"<div style='display:flex; justify-content:flex-start; margin:5px;'>"
-            f"<div style='background-color:#000000; color:white; padding:10px; border-radius:15px; max-width:70%; "
-            f"box-shadow:0px 1px 3px rgba(0,0,0,0.3); white-space:pre-wrap;'>🤖 {msg['content']}</div></div>",
-            unsafe_allow_html=True,
+            f"""
+            <div style='display:flex; justify-content:flex-start; margin:5px; align-items:center;'>
+                <div style='background-color:#000000; color:white; padding:10px; border-radius:15px; max-width:70%; 
+                            box-shadow:0px 1px 3px rgba(0,0,0,0.3); white-space:pre-wrap;'>{msg['content']}</div>
+                <span class='replay-btn' onclick="var msg=new SpeechSynthesisUtterance(`{safe_text}`); window.speechSynthesis.speak(msg);">🔊</span>
+            </div>
+            """,
+            unsafe_allow_html=True
         )
 
 # ================================
@@ -165,36 +176,34 @@ user_input = st.chat_input("Ask me about any disease, symptoms, or prevention...
 if user_input:
     st.session_state.messages.append({"role": "user", "content": user_input})
 
-    # 1. Check FAQs
+    # Check FAQs
     answer_en = find_answer_from_faqs(user_input)
 
-    # 2. If not found, use Gemini
+    # If not found, use Gemini
     if not answer_en:
         answer_en = fetch_from_gemini(user_input)
 
-    # 3. Fallback if Gemini fails
+    # Fallback
     if not answer_en or "Error" in answer_en:
         answer_en = find_answer_from_faqs(user_input) or "Sorry, I cannot fetch this right now."
 
-    # 4. Translate to Hindi
+    # Translate to Hindi
     answer_hi = translate_to_language(answer_en, "hi")
 
-    # Final bot reply
-    bot_reply = f"English: {answer_en}\n\n🌍 Hindi: {answer_hi}"
+    bot_reply = f"*English:* {answer_en}\n\n🌍 *Hindi:* {answer_hi}"
     st.session_state.messages.append({"role": "bot", "content": bot_reply})
 
-    # ================================
-    # Automatic TTS ONLY for latest bot reply
-    # ================================
+    # Automatic TTS for latest message
     components.html(f"""
         <script>
-        var msg = new SpeechSynthesisUtterance({answer_en.replace('','')}`);
-        window.speechSynthesis.cancel(); // stop any previous speech
+        var msg = new SpeechSynthesisUtterance(`{answer_en.replace('`','')}`);
+        window.speechSynthesis.cancel();
         window.speechSynthesis.speak(msg);
         </script>
     """, height=0)
 
     st.rerun()
+
 
 
 
