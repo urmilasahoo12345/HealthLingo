@@ -195,7 +195,7 @@ if user_input:
     }}, 500); // ensure execution after rendering
     </script>
     """, height=0)
-
+    st.rerun()
 
 
 
