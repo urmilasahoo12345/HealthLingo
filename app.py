@@ -80,9 +80,77 @@ def translate_to_language(text, lang_code):
 # ================================
 # Streamlit UI
 # ================================
-st.set_page_config(page_title="HealthLingo", page_icon="💬")
+st.set_page_config(page_title="HealthLingo", page_icon="💬", layout="wide")
 
-# Title
+# ================================
+# Navbar
+# ================================
+st.markdown("""
+<style>
+.navbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    background: linear-gradient(90deg, #00b09b, #96c93d, #2193b0, #6dd5ed);
+    padding: 10px 15px;
+    border-radius: 10px;
+    box-shadow: 0px 3px 6px rgba(0,0,0,0.2);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+.navbar img {
+    height: 40px;
+    margin-right: 10px;
+}
+.navbar .logo-text {
+    font-size: 22px;
+    font-weight: bold;
+    color: white;
+    font-family: 'Segoe UI', sans-serif;
+}
+.navbar-links {
+    display: flex;
+    flex-wrap: wrap;
+    margin-top: 5px;
+}
+.navbar-links a {
+    margin: 5px 8px;
+    text-decoration: none;
+    font-size: 16px;
+    font-weight: 500;
+    color: white;
+    transition: 0.3s;
+}
+.navbar-links a:hover {
+    color: yellow;
+}
+@media (max-width: 600px){
+    .navbar-links {
+        width: 100%;
+        justify-content: center;
+    }
+}
+</style>
+
+<div class="navbar">
+    <div style="display:flex; align-items:center;">
+        <img src="https://img.icons8.com/color/96/medical-doctor.png" alt="HealthLingo Logo">
+        <span class="logo-text">HealthLingo</span>
+    </div>
+    <div class="navbar-links">
+        <a href="#">Home</a>
+        <a href="#">FAQs</a>
+        <a href="#">About</a>
+        <a href="#">Contact</a>
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
+# ================================
+# Title below navbar
+# ================================
 st.markdown(
     "<h2 style='text-align:center; margin-top:10px;'>"
     "<span style='color:green;'>Health</span>"
@@ -97,90 +165,76 @@ if st.button("🗑 Clear Chat"):
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
+# ================================
 # Display chat bubbles
+# ================================
 for msg in st.session_state.messages:
     if msg["role"] == "user":
         st.markdown(
             f"<div style='display:flex; justify-content:flex-end; margin:5px;'>"
-            f"<div style='background-color:#003366; color:white; padding:10px; border-radius:15px; max-width:70%; "
+            f"<div style='background-color:#003366; color:white; padding:10px; border-radius:20px; max-width:70%; "
             f"box-shadow:0px 1px 3px rgba(0,0,0,0.3); white-space:pre-wrap;'>🧑 {msg['content']}</div></div>",
             unsafe_allow_html=True,
         )
     else:
         st.markdown(
             f"<div style='display:flex; justify-content:flex-start; margin:5px;'>"
-            f"<div style='background-color:#000000; color:white; padding:10px; border-radius:15px; max-width:70%; "
+            f"<div style='background-color:#000000; color:white; padding:10px; border-radius:20px; max-width:70%; "
             f"box-shadow:0px 1px 3px rgba(0,0,0,0.3); white-space:pre-wrap;'>🤖 {msg['content']}</div></div>",
             unsafe_allow_html=True,
         )
 
 # ================================
-# Floating input bar with mic
+# Floating WhatsApp-style input bar
 # ================================
-voice_html = """
+floating_input = """
 <div style="position:fixed; bottom:10px; width:100%; display:flex; justify-content:center; z-index:1000;">
-    <div style="display:flex; width:95%; max-width:600px; background-color: rgba(0,0,0,0.7); border-radius:25px; padding:5px; align-items:center;">
+    <div style="display:flex; width:95%; max-width:600px; background-color:#111111; border-radius:25px; padding:5px; align-items:center;">
         <input type="text" id="chat_input" placeholder="Ask about any disease..." 
                style="flex:1; border:none; background:transparent; color:white; padding:10px; font-size:16px; border-radius:20px;">
-        <button id="micBtn" style="background:none; border:none; color:white; font-size:24px; margin-left:5px; cursor:pointer;">🎤</button>
+        <button id="sendBtn" style="background:none; border:none; color:white; font-size:22px; margin-left:5px; cursor:pointer;">📩</button>
     </div>
 </div>
 
 <script>
-var recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-recognition.lang = "en-US";
-recognition.interimResults = false;
-recognition.maxAlternatives = 1;
-
-document.getElementById("micBtn").onclick = function() {
-    recognition.start();
-};
-
-recognition.onresult = function(event) {
-    var transcript = event.results[0][0].transcript;
+document.getElementById("sendBtn").onclick = function(){
     const inputBox = document.getElementById("chat_input");
-    inputBox.value = transcript;
-    window.parent.postMessage({isStreamlitMessage:true, type:'VOICE_INPUT', text: transcript}, "*");
+    window.parent.postMessage({isStreamlitMessage:true, type:'CHAT_INPUT', text: inputBox.value}, "*");
+    inputBox.value = "";
 };
 
 document.getElementById("chat_input").addEventListener("keydown", function(e){
     if(e.key === "Enter"){
-        window.parent.postMessage({isStreamlitMessage:true, type:'VOICE_INPUT', text: this.value}, "*");
+        window.parent.postMessage({isStreamlitMessage:true, type:'CHAT_INPUT', text: this.value}, "*");
         this.value = "";
     }
 });
 </script>
 """
 
-components.html(voice_html, height=80)
+components.html(floating_input, height=80)
 
 # ================================
-# Capture voice input from JS
+# Capture input from JS
 # ================================
-if "voice_input" not in st.session_state:
-    st.session_state.voice_input = ""
+if "chat_input" not in st.session_state:
+    st.session_state.chat_input = ""
 
 components.html("""
 <script>
 window.addEventListener("message", (event) => {
-    if(event.data?.type === "VOICE_INPUT"){
+    if(event.data?.type === "CHAT_INPUT"){
         const value = event.data.text;
-        const inputBox = window.parent.document.querySelector("textarea");
-        if(inputBox){
-            inputBox.value = value;
-            inputBox.dispatchEvent(new Event("input", { bubbles: true }));
-        }
+        window.parent.postMessage({isStreamlitMessage:true, type:'SET_INPUT', text: value}, "*");
     }
 });
 </script>
 """, height=0)
 
 # ================================
-# Streamlit chat input processing
+# Process input from floating bar
 # ================================
-user_input = st.chat_input("Ask me about any disease, symptoms, or prevention...")
-
-if user_input:
+def process_input(user_input):
     st.session_state.messages.append({"role": "user", "content": user_input})
 
     # Check FAQs
@@ -200,7 +254,7 @@ if user_input:
     bot_reply = f"**English:** {answer_en}\n\n🌍 **Hindi:** {answer_hi}"
     st.session_state.messages.append({"role": "bot", "content": bot_reply})
 
-    # Browser TTS (no pyttsx3 needed)
+    # Text-to-Speech
     bot_reply_js = f"""
     <script>
     var msg = new SpeechSynthesisUtterance("{answer_en.replace('"','\\"')}");
@@ -208,8 +262,28 @@ if user_input:
     </script>
     """
     components.html(bot_reply_js, height=0)
-
     st.rerun()
+
+# ================================
+# Capture and process input
+# ================================
+if "new_input" not in st.session_state:
+    st.session_state.new_input = ""
+
+components.html("""
+<script>
+window.addEventListener("message", (event) => {
+    if(event.data?.type === "SET_INPUT"){
+        const value = event.data.text;
+        const input = document.createElement("input");
+        input.value = value;
+        input.style.display = "none";
+        document.body.appendChild(input);
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+});
+</script>
+""", height=0)
 
 
 
