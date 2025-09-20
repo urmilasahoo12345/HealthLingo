@@ -6,7 +6,6 @@ from dotenv import load_dotenv
 from google import genai
 from deep_translator import GoogleTranslator
 import streamlit.components.v1 as components
-import pyttsx3
 
 # ================================
 # Load environment variables
@@ -79,14 +78,6 @@ def translate_to_language(text, lang_code):
         return text
 
 # ================================
-# Text-to-speech engine
-# ================================
-engine = pyttsx3.init()
-def speak_text(text):
-    engine.say(text)
-    engine.runAndWait()
-
-# ================================
 # Streamlit UI
 # ================================
 st.set_page_config(page_title="HealthLingo", page_icon="💬")
@@ -106,12 +97,7 @@ if st.button("🗑 Clear Chat"):
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-if "voice_input" not in st.session_state:
-    st.session_state.voice_input = ""
-
-# ================================
 # Display chat bubbles
-# ================================
 for msg in st.session_state.messages:
     if msg["role"] == "user":
         st.markdown(
@@ -129,7 +115,7 @@ for msg in st.session_state.messages:
         )
 
 # ================================
-# Floating input bar with voice support
+# Floating input bar with mic
 # ================================
 voice_html = """
 <div style="position:fixed; bottom:10px; width:100%; display:flex; justify-content:center; z-index:1000;">
@@ -169,8 +155,11 @@ document.getElementById("chat_input").addEventListener("keydown", function(e){
 components.html(voice_html, height=80)
 
 # ================================
-# Capture voice input
+# Capture voice input from JS
 # ================================
+if "voice_input" not in st.session_state:
+    st.session_state.voice_input = ""
+
 components.html("""
 <script>
 window.addEventListener("message", (event) => {
@@ -187,39 +176,40 @@ window.addEventListener("message", (event) => {
 """, height=0)
 
 # ================================
-# Process voice or typed input
+# Streamlit chat input processing
 # ================================
-if st.session_state.voice_input:
-    user_input = st.session_state.voice_input
-    st.session_state.voice_input = ""
-else:
-    user_input = st.text_input("Ask me about any disease, symptoms, or prevention...", key="text_input")
+user_input = st.chat_input("Ask me about any disease, symptoms, or prevention...")
 
 if user_input:
     st.session_state.messages.append({"role": "user", "content": user_input})
 
-    # 1. Check FAQs
+    # Check FAQs
     answer_en = find_answer_from_faqs(user_input)
 
-    # 2. If not found, use Gemini
+    # Use Gemini if not found
     if not answer_en:
         answer_en = fetch_from_gemini(user_input)
 
-    # 3. Fallback
     if not answer_en or "Error" in answer_en:
         answer_en = find_answer_from_faqs(user_input) or "Sorry, I cannot fetch this right now."
 
-    # 4. Translate to Hindi
+    # Translate to Hindi
     answer_hi = translate_to_language(answer_en, "hi")
 
-    # 5. Bot reply
+    # Final bot reply
     bot_reply = f"**English:** {answer_en}\n\n🌍 **Hindi:** {answer_hi}"
     st.session_state.messages.append({"role": "bot", "content": bot_reply})
 
-    # 6. Speak the bot reply
-    speak_text(answer_en)
+    # Browser TTS (no pyttsx3 needed)
+    bot_reply_js = f"""
+    <script>
+    var msg = new SpeechSynthesisUtterance("{answer_en.replace('"','\\"')}");
+    window.speechSynthesis.speak(msg);
+    </script>
+    """
+    components.html(bot_reply_js, height=0)
 
-    st.experimental_rerun()
+    st.rerun()
 
 
 
