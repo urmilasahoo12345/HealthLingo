@@ -7,21 +7,19 @@ from deep_translator import GoogleTranslator
 import streamlit.components.v1 as components
 
 # ================================
-# Load Gemini API Key from Streamlit secrets
+# Load Gemini API Key
 # ================================
 gemini_key = os.getenv("GEMINI_API_KEY")
 if not gemini_key:
     st.error("⚠ GEMINI_API_KEY not found in Streamlit secrets.")
     st.stop()
 
-# Setup Gemini client
+# Gemini Client
 client = genai.Client(api_key=gemini_key)
 PRIMARY_MODEL = "gemini-2.5-flash"
 BACKUP_MODEL = "gemini-1.5-flash"
 
-# ================================
 # Load FAQs
-# ================================
 with open("faqs.json", "r", encoding="utf-8") as f:
     faqs = json.load(f)
 
@@ -33,9 +31,6 @@ def find_answer_from_faqs(user_query: str):
                 return entry["info"]
     return None
 
-# ================================
-# Gemini Query
-# ================================
 def fetch_from_gemini(user_query: str, retries=3):
     prompt = f"""
 You are a health assistant. The user asked: {user_query}
@@ -65,9 +60,6 @@ If it's not health-related, politely say so.
                 return f"⚠ Error fetching from Gemini: {str(e2)}"
     return "⚠ Could not fetch response from Gemini."
 
-# ================================
-# Translator
-# ================================
 def translate_to_language(text, lang_code):
     try:
         return GoogleTranslator(source="en", target=lang_code).translate(text)
@@ -81,43 +73,31 @@ st.set_page_config(page_title="HealthLingo", page_icon="💬")
 
 # Navbar
 st.markdown("""
-    <style>
-        .navbar {
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            justify-content: space-between;
-            background: linear-gradient(90deg, #00b09b, #96c93d, #2193b0, #6dd5ed);
-            padding: 12px 20px;
-            border-radius: 10px;
-            box-shadow: 0px 3px 6px rgba(0,0,0,0.2);
-            position: sticky;
-            top: 0;
-            z-index: 1000;
-        }
-        .navbar img { height: 35px; margin-right: 10px; }
-        .navbar .logo-text { font-size: 20px; font-weight: bold; color: white; font-family: 'Segoe UI', sans-serif; }
-        .navbar-links { display: flex; flex-wrap: wrap; justify-content: center; margin-top: 8px; }
-        .navbar-links a { margin: 6px 8px; text-decoration: none; font-size: 15px; font-weight: 500; color: white; transition: 0.3s; }
-        .navbar-links a:hover { color: yellow; }
-        @media (max-width: 600px) {
-            .navbar { flex-direction: column; text-align: center; }
-            .navbar-links { flex-direction: column; margin-top: 10px; }
-        }
-        .replay-btn { cursor:pointer; font-size:18px; margin-left:5px; }
-    </style>
-    <div class="navbar">
-        <div style="display:flex; align-items:center;">
-            <img src="https://img.icons8.com/color/96/medical-doctor.png" alt="HealthLingo Logo">
-            <span class="logo-text">HealthLingo</span>
-        </div>
-        <div class="navbar-links">
-            <a href="#">Home</a>
-            <a href="#">FAQs</a>
-            <a href="#">About</a>
-            <a href="#">Contact</a>
-        </div>
+<style>
+.navbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+           background: linear-gradient(90deg, #00b09b, #96c93d, #2193b0, #6dd5ed);
+           padding: 12px 20px; border-radius: 10px; box-shadow: 0px 3px 6px rgba(0,0,0,0.2);
+           position: sticky; top: 0; z-index: 1000; }
+.navbar img { height: 35px; margin-right: 10px; }
+.navbar .logo-text { font-size: 20px; font-weight: bold; color: white; font-family: 'Segoe UI', sans-serif; }
+.navbar-links { display: flex; flex-wrap: wrap; justify-content: center; margin-top: 8px; }
+.navbar-links a { margin: 6px 8px; text-decoration: none; font-size: 15px; font-weight: 500; color: white; transition: 0.3s; }
+.navbar-links a:hover { color: yellow; }
+@media (max-width: 600px) { .navbar { flex-direction: column; text-align: center; } .navbar-links { flex-direction: column; margin-top: 10px; } }
+.replay-btn { cursor:pointer; font-size:18px; margin-left:5px; }
+</style>
+<div class="navbar">
+    <div style="display:flex; align-items:center;">
+        <img src="https://img.icons8.com/color/96/medical-doctor.png" alt="HealthLingo Logo">
+        <span class="logo-text">HealthLingo</span>
     </div>
+    <div class="navbar-links">
+        <a href="#">Home</a>
+        <a href="#">FAQs</a>
+        <a href="#">About</a>
+        <a href="#">Contact</a>
+    </div>
+</div>
 """, unsafe_allow_html=True)
 
 # Heading
@@ -157,31 +137,34 @@ for msg in st.session_state.messages:
             unsafe_allow_html=True
         )
 
-# Input box
-user_input = st.chat_input("Ask me about any disease, symptoms, or prevention...")
+# ================================
+# Text input at bottom
+# ================================
+with st.form(key='chat_form', clear_on_submit=True):
+    user_input = st.text_input("Ask me about any disease, symptoms, or prevention...", key="user_input")
+    submitted = st.form_submit_button("Send")
+    if submitted and user_input:
+        st.session_state.messages.append({"role": "user", "content": user_input})
 
-if user_input:
-    st.session_state.messages.append({"role": "user", "content": user_input})
+        # Get answer
+        answer_en = find_answer_from_faqs(user_input)
+        if not answer_en:
+            answer_en = fetch_from_gemini(user_input)
+        if not answer_en or "Error" in answer_en:
+            answer_en = find_answer_from_faqs(user_input) or "Sorry, I cannot fetch this right now."
 
-    # Check FAQs
-    answer_en = find_answer_from_faqs(user_input)
-    if not answer_en:
-        answer_en = fetch_from_gemini(user_input)
-    if not answer_en or "Error" in answer_en:
-        answer_en = find_answer_from_faqs(user_input) or "Sorry, I cannot fetch this right now."
+        answer_hi = translate_to_language(answer_en, "hi")
+        bot_reply = f"*English:* {answer_en}\n\n🌍 *Hindi:* {answer_hi}"
+        st.session_state.messages.append({"role": "bot", "content": bot_reply})
 
-    answer_hi = translate_to_language(answer_en, "hi")
-    bot_reply = f"*English:* {answer_en}\n\n🌍 *Hindi:* {answer_hi}"
-    st.session_state.messages.append({"role": "bot", "content": bot_reply})
-
-    # Auto-read latest bot reply
-    components.html(f"""
-        <script>
-        var msg = new SpeechSynthesisUtterance(`{answer_en.replace('`','')}`);
-        window.speechSynthesis.cancel();
-        window.speechSynthesis.speak(msg);
-        </script>
-    """, height=0)
+        # Auto-TTS
+        components.html(f"""
+            <script>
+            var msg = new SpeechSynthesisUtterance(`{answer_en.replace('`','')}`);
+            window.speechSynthesis.cancel();
+            window.speechSynthesis.speak(msg);
+            </script>
+        """, height=0)
 
 
 
