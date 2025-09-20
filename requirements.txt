@@ -1,9 +1,4 @@
 streamlit
-google-genai
+google-generativeai
 deep-translator
 gTTS
-streamlit-webrtc
-SpeechRecognition
-sounddevice
-numpy
-
