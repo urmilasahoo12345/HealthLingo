@@ -80,9 +80,7 @@ def translate_to_language(text, lang_code):
 # ================================
 st.set_page_config(page_title="HealthLingo", page_icon="💬")
 
-# ================================
-# Responsive Navbar
-# ================================
+# Navbar
 st.markdown("""
     <style>
         .navbar {
@@ -138,28 +136,7 @@ if st.button("🗑 Clear Chat"):
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# ================================
-# Display chat messages
-# ================================
-for msg in st.session_state.messages:
-    if msg["role"] == "user":
-        st.markdown(
-            f"<div style='display:flex; justify-content:flex-end; margin:5px;'>"
-            f"<div style='background-color:#003366; color:white; padding:10px; border-radius:15px; max-width:70%; "
-            f"box-shadow:0px 1px 3px rgba(0,0,0,0.3); white-space:pre-wrap;'>🧑 {msg['content']}</div></div>",
-            unsafe_allow_html=True,
-        )
-    else:
-        st.markdown(
-            f"<div style='display:flex; justify-content:flex-start; margin:5px;'>"
-            f"<div style='background-color:#000000; color:white; padding:10px; border-radius:15px; max-width:70%; "
-            f"box-shadow:0px 1px 3px rgba(0,0,0,0.3); white-space:pre-wrap;'>🤖 {msg['content']}</div></div>",
-            unsafe_allow_html=True,
-        )
-
-# ================================
 # Input box
-# ================================
 user_input = st.chat_input("Ask me about any disease, symptoms, or prevention...")
 
 if user_input:
@@ -183,18 +160,43 @@ if user_input:
     bot_reply = f"*English:* {answer_en}\n\n🌍 *Hindi:* {answer_hi}"
     st.session_state.messages.append({"role": "bot", "content": bot_reply})
 
-    # ================================
-    # Automatic TTS for latest bot reply with delay
-    # ================================
+# ================================
+# Display chat messages
+# ================================
+latest_bot_reply = None
+for msg in st.session_state.messages:
+    if msg["role"] == "user":
+        st.markdown(
+            f"<div style='display:flex; justify-content:flex-end; margin:5px;'>"
+            f"<div style='background-color:#003366; color:white; padding:10px; border-radius:15px; max-width:70%; "
+            f"box-shadow:0px 1px 3px rgba(0,0,0,0.3); white-space:pre-wrap;'>🧑 {msg['content']}</div></div>",
+            unsafe_allow_html=True,
+        )
+    else:
+        st.markdown(
+            f"<div style='display:flex; justify-content:flex-start; margin:5px;'>"
+            f"<div style='background-color:#000000; color:white; padding:10px; border-radius:15px; max-width:70%; "
+            f"box-shadow:0px 1px 3px rgba(0,0,0,0.3); white-space:pre-wrap;'>🤖 {msg['content']}</div></div>",
+            unsafe_allow_html=True,
+        )
+        latest_bot_reply = msg["content"]
+
+# ================================
+# Automatic TTS only for latest bot reply
+# ================================
+if latest_bot_reply:
+    # Extract only English part to speak
+    english_text = latest_bot_reply.split("🌍")[0].replace("*English:*", "").strip()
     components.html(f"""
     <script>
     setTimeout(() => {{
-        var msg = new SpeechSynthesisUtterance(`{answer_en.replace('`','')}`);
-        window.speechSynthesis.cancel(); // stop any previous speech
+        var msg = new SpeechSynthesisUtterance(`{english_text.replace('`','')}`);
+        window.speechSynthesis.cancel();
         window.speechSynthesis.speak(msg);
-    }}, 500); // ensure execution after rendering
+    }}, 600);
     </script>
     """, height=0)
+
 
 
 
