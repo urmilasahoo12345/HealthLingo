@@ -10,7 +10,6 @@ import streamlit.components.v1 as components
 # Load Gemini API Key from Streamlit secrets
 # ================================
 gemini_key = os.getenv("GEMINI_API_KEY")
-
 if not gemini_key:
     st.error("⚠ GEMINI_API_KEY not found in Streamlit secrets.")
     st.stop()
@@ -35,7 +34,7 @@ def find_answer_from_faqs(user_query: str):
     return None
 
 # ================================
-# Gemini Query with Retry
+# Gemini Query
 # ================================
 def fetch_from_gemini(user_query: str, retries=3):
     prompt = f"""
@@ -80,14 +79,12 @@ def translate_to_language(text, lang_code):
 # ================================
 st.set_page_config(page_title="HealthLingo", page_icon="💬")
 
-# ================================
-# Responsive Navbar
-# ================================
+# Navbar
 st.markdown("""
     <style>
         .navbar {
             display: flex;
-            flex-wrap: wrap; 
+            flex-wrap: wrap;
             align-items: center;
             justify-content: space-between;
             background: linear-gradient(90deg, #00b09b, #96c93d, #2193b0, #6dd5ed);
@@ -107,13 +104,8 @@ st.markdown("""
             .navbar { flex-direction: column; text-align: center; }
             .navbar-links { flex-direction: column; margin-top: 10px; }
         }
-        .replay-btn {
-            cursor: pointer; 
-            font-size: 18px; 
-            margin-left: 5px;
-        }
+        .replay-btn { cursor:pointer; font-size:18px; margin-left:5px; }
     </style>
-
     <div class="navbar">
         <div style="display:flex; align-items:center;">
             <img src="https://img.icons8.com/color/96/medical-doctor.png" alt="HealthLingo Logo">
@@ -143,19 +135,16 @@ if st.button("🗑 Clear Chat"):
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# ================================
-# Display chat messages with replay
-# ================================
-for i, msg in enumerate(st.session_state.messages):
+# Display messages
+for msg in st.session_state.messages:
     if msg["role"] == "user":
         st.markdown(
             f"<div style='display:flex; justify-content:flex-end; margin:5px;'>"
             f"<div style='background-color:#003366; color:white; padding:10px; border-radius:15px; max-width:70%; "
             f"box-shadow:0px 1px 3px rgba(0,0,0,0.3); white-space:pre-wrap;'>🧑 {msg['content']}</div></div>",
-            unsafe_allow_html=True,
+            unsafe_allow_html=True
         )
     else:
-        # Bot message with replay button
         safe_text = msg['content'].replace('`','')
         st.markdown(
             f"""
@@ -168,9 +157,7 @@ for i, msg in enumerate(st.session_state.messages):
             unsafe_allow_html=True
         )
 
-# ================================
 # Input box
-# ================================
 user_input = st.chat_input("Ask me about any disease, symptoms, or prevention...")
 
 if user_input:
@@ -178,22 +165,16 @@ if user_input:
 
     # Check FAQs
     answer_en = find_answer_from_faqs(user_input)
-
-    # If not found, use Gemini
     if not answer_en:
         answer_en = fetch_from_gemini(user_input)
-
-    # Fallback
     if not answer_en or "Error" in answer_en:
         answer_en = find_answer_from_faqs(user_input) or "Sorry, I cannot fetch this right now."
 
-    # Translate to Hindi
     answer_hi = translate_to_language(answer_en, "hi")
-
     bot_reply = f"*English:* {answer_en}\n\n🌍 *Hindi:* {answer_hi}"
     st.session_state.messages.append({"role": "bot", "content": bot_reply})
 
-    # Automatic TTS for latest message
+    # Auto-read latest bot reply
     components.html(f"""
         <script>
         var msg = new SpeechSynthesisUtterance(`{answer_en.replace('`','')}`);
@@ -202,7 +183,6 @@ if user_input:
         </script>
     """, height=0)
 
-    st.rerun()
 
 
 
