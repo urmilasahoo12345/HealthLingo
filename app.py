@@ -35,7 +35,7 @@ def find_answer_from_faqs(user_query: str):
     return None
 
 def fetch_from_gemini(user_query: str, retries=3):
-    prompt = f"You are a health assistant. The user asked: {user_query}\nRespond in concise English."
+    prompt = f"You are a health assistant. The user asked: {user_query}\nRespond concisely."
     for attempt in range(retries):
         try:
             response = client.models.generate_content(model=PRIMARY_MODEL, contents=prompt)
@@ -85,7 +85,6 @@ for msg in st.session_state.messages:
         st.markdown(f"<div style='display:flex; justify-content:flex-end; margin:5px;'>"
                     f"<div style='background-color:#003366; color:white; padding:10px; border-radius:20px; max-width:70%;'>🧑 {msg['content']}</div></div>", unsafe_allow_html=True)
     else:
-        # Bot with speaker button
         st.markdown(f"""
         <div style='display:flex; justify-content:flex-start; align-items:center; margin:5px;'>
             <div style='background-color:#000; color:white; padding:10px; border-radius:20px; max-width:70%;'>🤖 {msg['content']}</div>
@@ -95,9 +94,35 @@ for msg in st.session_state.messages:
         """, unsafe_allow_html=True)
 
 # ================================
-# Input
+# Sticky bottom input with submit
 # ================================
-user_input = st.text_input("Ask about any disease, symptoms, or prevention...", key="input_bar")
+st.markdown("""
+<div style="position:fixed; bottom:0; width:100%; display:flex; justify-content:center; z-index:1000; background:#0d0d0d; padding:10px;">
+    <form id="chatForm" style="display:flex; width:95%; max-width:600px;">
+        <input name="user_input" type="text" placeholder="Ask about any disease..." 
+            style="flex:1; border:none; border-radius:20px; padding:10px; font-size:16px;">
+        <input type="submit" value="Send" style="margin-left:5px; padding:10px 15px; border:none; border-radius:20px; background:#003366; color:white; cursor:pointer;">
+    </form>
+</div>
+""", unsafe_allow_html=True)
+
+# ================================
+# Capture input using Streamlit form submission
+# ================================
+def get_input():
+    from streamlit_js_eval import streamlit_js_eval
+    # get value from the input box
+    js_code = """
+    (() => {
+        const input = document.querySelector('input[name="user_input"]');
+        return input ? input.value : "";
+    })()
+    """
+    value = streamlit_js_eval(js_code)
+    return value
+
+# Using st.form_submit_button alternative
+user_input = st.text_input("", key="input_fixed")  # hidden but required for Streamlit rerun
 
 if user_input:
     st.session_state.messages.append({"role": "user", "content": user_input})
@@ -122,6 +147,7 @@ if user_input:
     window.speechSynthesis.speak(msg);
     </script>
     """, height=0)
+
 
 
 
