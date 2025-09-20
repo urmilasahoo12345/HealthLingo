@@ -6,8 +6,9 @@ from google import genai
 from deep_translator import GoogleTranslator
 from gtts import gTTS
 import tempfile
-from streamlit_webrtc import webrtc_streamer, WebRtcMode, ClientSettings
 import speech_recognition as sr
+import sounddevice as sd
+import numpy as np
 
 # ================================
 # Load Gemini API Key from Streamlit secrets
@@ -79,68 +80,64 @@ def translate_to_language(text, lang_code):
         return text
 
 # ================================
-# Text-to-Speech
+# Voice Functions
 # ================================
-def speak_text(text, lang="en"):
+def record_and_transcribe(duration=5, samplerate=16000):
+    """Record voice from mic and convert to text"""
+    recognizer = sr.Recognizer()
+    st.info("🎙 Recording... Speak now")
+    audio_data = sd.rec(int(duration * samplerate), samplerate=samplerate, channels=1, dtype=np.int16)
+    sd.wait()
+    st.success("✅ Recording complete! Processing...")
+    audio_data = sr.AudioData(audio_data.tobytes(), samplerate, 2)
+    try:
+        text = recognizer.recognize_google(audio_data)
+        return text
+    except sr.UnknownValueError:
+        return "⚠ Sorry, I could not understand your speech."
+    except sr.RequestError:
+        return "⚠ Speech Recognition service error."
+
+def text_to_speech(text, lang="en"):
+    """Convert text reply into speech"""
     try:
         tts = gTTS(text=text, lang=lang)
-        tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
-        tts.save(tmp_file.name)
-        return tmp_file.name
-    except Exception as e:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmpfile:
+            tts.save(tmpfile.name)
+            return tmpfile.name
+    except:
         return None
-
-# ================================
-# Speech-to-Text (using recognizer)
-# ================================
-def speech_to_text(audio_bytes):
-    r = sr.Recognizer()
-    with sr.AudioFile(audio_bytes) as source:
-        audio = r.record(source)
-        try:
-            return r.recognize_google(audio)
-        except sr.UnknownValueError:
-            return "⚠ Could not understand audio."
-        except sr.RequestError:
-            return "⚠ Speech recognition service unavailable."
 
 # ================================
 # Streamlit UI
 # ================================
 st.set_page_config(page_title="HealthLingo", page_icon="💬")
 
-# Custom Navbar
+# Navbar
 st.markdown("""
     <style>
-        body {
-            background-color: #0d0d0d;
-        }
         .navbar {
             display: flex;
-            flex-wrap: wrap;
             align-items: center;
             justify-content: space-between;
-            background: linear-gradient(90deg, #00b09b, #2193b0);
-            padding: 10px 15px;
+            background: linear-gradient(90deg, #00b09b, #96c93d, #2193b0, #6dd5ed);
+            padding: 12px 20px;
             border-radius: 10px;
-            box-shadow: 0px 3px 6px rgba(0,0,0,0.3);
+            box-shadow: 0px 3px 6px rgba(0,0,0,0.2);
             position: sticky;
             top: 0;
             z-index: 1000;
         }
         .navbar .logo-text {
-            font-size: 20px;
+            font-size: 22px;
             font-weight: bold;
             color: white;
-        }
-        .navbar-links {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
+            font-family: 'Segoe UI', sans-serif;
         }
         .navbar-links a {
+            margin: 0 12px;
             text-decoration: none;
-            font-size: 14px;
+            font-size: 16px;
             font-weight: 500;
             color: white;
         }
@@ -150,19 +147,18 @@ st.markdown("""
     </style>
     <div class="navbar">
         <div style="display:flex; align-items:center;">
-            <img src="https://img.icons8.com/color/48/medical-doctor.png" alt="HealthLingo Logo">
+            <img src="https://img.icons8.com/color/96/medical-doctor.png" alt="logo" height="40">
             <span class="logo-text">HealthLingo</span>
         </div>
         <div class="navbar-links">
             <a href="#">Home</a>
             <a href="#">FAQs</a>
             <a href="#">About</a>
-            <a href="#">Contact</a>
         </div>
     </div>
 """, unsafe_allow_html=True)
 
-# Heading below navbar
+# Heading
 st.markdown(
     "<h2 style='text-align:center; margin-top:20px;'>"
     "<span style='color:green;'>Health</span>"
@@ -170,14 +166,14 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# Clear chat button
+# Clear chat
 if st.button("🗑 Clear Chat"):
     st.session_state.messages = []
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Display chat history
+# Display messages
 for msg in st.session_state.messages:
     if msg["role"] == "user":
         st.markdown(
@@ -193,46 +189,33 @@ for msg in st.session_state.messages:
         )
 
 # ================================
-# User Input (Text)
+# Chat input with mic button
 # ================================
-user_input = st.chat_input("Ask me about any disease, symptoms, or prevention...")
+col1, col2 = st.columns([8, 1])
+with col1:
+    user_input = st.chat_input("Ask me about any disease, symptoms, or prevention...")
+with col2:
+    mic_pressed = st.button("🎤")
 
-# ================================
-# Voice Input
-# ================================
-st.markdown("🎤 **Or speak your query**")
-webrtc_ctx = webrtc_streamer(
-    key="speech",
-    mode=WebRtcMode.RECVONLY,
-    client_settings=ClientSettings(
-        media_stream_constraints={"audio": True, "video": False}
-    )
-)
+if mic_pressed:
+    user_input = record_and_transcribe()
 
 if user_input:
     st.session_state.messages.append({"role": "user", "content": user_input})
 
-    # 1. Check FAQs
-    answer_en = find_answer_from_faqs(user_input)
-
-    # 2. If not found, use Gemini
-    if not answer_en:
-        answer_en = fetch_from_gemini(user_input)
-
-    # 3. Fallback if Gemini fails
+    # Answer
+    answer_en = find_answer_from_faqs(user_input) or fetch_from_gemini(user_input)
     if not answer_en or "Error" in answer_en:
-        answer_en = find_answer_from_faqs(user_input) or "Sorry, I cannot fetch this right now."
+        answer_en = "Sorry, I cannot fetch this right now."
 
-    # 4. Translate to Hindi
     answer_hi = translate_to_language(answer_en, "hi")
-
-    # Final bot reply
-    bot_reply = f"*English:* {answer_en}\n\n🌍 *Hindi:* {answer_hi}"
+    bot_reply = f"**English:** {answer_en}\n\n🌍 **Hindi:** {answer_hi}"
     st.session_state.messages.append({"role": "bot", "content": bot_reply})
 
-    # Text-to-Speech for reply
-    audio_file = speak_text(answer_en, lang="en")
+    # Voice output
+    audio_file = text_to_speech(answer_en)
     if audio_file:
         st.audio(audio_file, format="audio/mp3")
 
     st.rerun()
+
