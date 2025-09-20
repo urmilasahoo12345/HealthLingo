@@ -138,7 +138,9 @@ if st.button("🗑 Clear Chat"):
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
+# ================================
 # Display chat messages
+# ================================
 for msg in st.session_state.messages:
     if msg["role"] == "user":
         st.markdown(
@@ -148,18 +150,16 @@ for msg in st.session_state.messages:
             unsafe_allow_html=True,
         )
     else:
-        # Bot reply + TTS button
         st.markdown(
-            f"<div style='display:flex; justify-content:flex-start; align-items:center; margin:5px;'>"
-            f"<div style='background-color:#000000; color:white; padding:10px; border-radius:15px; max-width:70%; white-space:pre-wrap;'>"
-            f"🤖 {msg['content']}</div>"
-            f"<button onclick=\"var msg=new SpeechSynthesisUtterance(`{msg['content'].replace('`','')}`); window.speechSynthesis.speak(msg);\" "
-            f"style='margin-left:5px; cursor:pointer; background:#333; color:white; border:none; border-radius:5px; padding:5px;'>🔊</button>"
-            f"</div>",
+            f"<div style='display:flex; justify-content:flex-start; margin:5px;'>"
+            f"<div style='background-color:#000000; color:white; padding:10px; border-radius:15px; max-width:70%; "
+            f"box-shadow:0px 1px 3px rgba(0,0,0,0.3); white-space:pre-wrap;'>🤖 {msg['content']}</div></div>",
             unsafe_allow_html=True,
         )
 
+# ================================
 # Input box
+# ================================
 user_input = st.chat_input("Ask me about any disease, symptoms, or prevention...")
 
 if user_input:
@@ -183,15 +183,19 @@ if user_input:
     bot_reply = f"*English:* {answer_en}\n\n🌍 *Hindi:* {answer_hi}"
     st.session_state.messages.append({"role": "bot", "content": bot_reply})
 
-    # Auto TTS using JavaScript
+    # ================================
+    # Automatic TTS ONLY for latest bot reply
+    # ================================
     components.html(f"""
         <script>
-        var msg = new SpeechSynthesisUtterance("{answer_en.replace('"','\\"')}");
+        var msg = new SpeechSynthesisUtterance(`{answer_en.replace('`','')}`);
+        window.speechSynthesis.cancel(); // stop any previous speech
         window.speechSynthesis.speak(msg);
         </script>
     """, height=0)
 
     st.rerun()
+
 
 
 
