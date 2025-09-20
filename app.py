@@ -80,9 +80,7 @@ def translate_to_language(text, lang_code):
 # ================================
 st.set_page_config(page_title="HealthLingo", page_icon="💬")
 
-# ================================
-# Navbar (icons only)
-# ================================
+# Navbar
 st.markdown("""
     <style>
         .navbar {
@@ -100,41 +98,39 @@ st.markdown("""
         }
         .navbar img { height: 35px; margin-right: 10px; }
         .navbar .logo-text { font-size: 20px; font-weight: bold; color: white; font-family: 'Segoe UI', sans-serif; }
-
-        .navbar-links {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: flex-end;
-            gap: 15px;
-            margin-top: 0;
-        }
-        .navbar-links a {
-            font-size: 20px;
-            color: white;
-            transition: 0.3s;
-        }
-        .navbar-links a:hover {
-            color: black;
-        }
-
+        .navbar-links { display: flex; flex-wrap: wrap; justify-content: center; margin-top: 8px; }
+        .navbar-links a { margin: 6px 8px; text-decoration: none; font-size: 15px; font-weight: 500; color: white; transition: 0.3s; }
+        .navbar-links a:hover { color: yellow; }
         @media (max-width: 600px) {
             .navbar { flex-direction: column; text-align: center; }
-            .navbar-links { flex-direction: row; margin-top: 10px; justify-content: center; gap: 10px; }
+            .navbar-links { flex-direction: column; margin-top: 10px; }
         }
     </style>
 
     <div class="navbar">
-        <div style="display:flex; align-items:center;">
-            <img src="https://img.icons8.com/color/96/medical-doctor.png" alt="HealthLingo Logo">
-            <span class="logo-text">HealthLingo</span>
-        </div>
-        <div class="navbar-links">
-            <a href="#" title="Home"><img src="https://img.icons8.com/ios-filled/50/home.png" alt="Home"></a>
-            <a href="#" title="FAQs"><img src="https://img.icons8.com/ios-filled/50/help.png" alt="FAQs"></a>
-            <a href="#" title="About"><img src="https://img.icons8.com/ios-filled/50/info.png" alt="About"></a>
-            <a href="#" title="Contact"><img src="https://img.icons8.com/ios-filled/50/contacts.png" alt="Contact"></a>
-        </div>
+    <!-- Left side: logo + name -->
+    <div style="display:flex; align-items:center;">
+        <img src="https://img.icons8.com/color/96/medical-doctor.png" alt="HealthLingo Logo">
+        <span class="logo-text">HealthLingo</span>
     </div>
+
+    <!-- Right side: icons as links -->
+    <div class="navbar-links">
+        <a href="#" title="Home">
+            <img src="https://img.icons8.com/ios-filled/50/home.png" alt="Home">
+        </a>
+        <a href="#" title="FAQs">
+            <img src="https://img.icons8.com/ios-filled/50/help.png" alt="FAQs">
+        </a>
+        <a href="#" title="About">
+            <img src="https://img.icons8.com/ios-filled/50/info.png" alt="About">
+        </a>
+        <a href="#" title="Contact">
+            <img src="https://img.icons8.com/ios-filled/50/contacts.png" alt="Contact">
+        </a>
+    </div>
+</div>
+
 """, unsafe_allow_html=True)
 
 # Heading
@@ -145,37 +141,14 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# ================================
-# Clear Chat
-# ================================
+# Clear chat
 if st.button("🗑 Clear Chat"):
     st.session_state.messages = []
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# ================================
-# Display Chat Messages
-# ================================
-for msg in st.session_state.messages:
-    if msg["role"] == "user":
-        st.markdown(
-            f"<div style='display:flex; justify-content:flex-end; margin:5px;'>"
-            f"<div style='background-color:#003366; color:white; padding:10px; border-radius:15px; max-width:70%; "
-            f"box-shadow:0px 1px 3px rgba(0,0,0,0.3); white-space:pre-wrap;'>🧑 {msg['content']}</div></div>",
-            unsafe_allow_html=True,
-        )
-    else:
-        st.markdown(
-            f"<div style='display:flex; justify-content:flex-start; margin:5px;'>"
-            f"<div style='background-color:#000000; color:white; padding:10px; border-radius:15px; max-width:70%; "
-            f"box-shadow:0px 1px 3px rgba(0,0,0,0.3); white-space:pre-wrap;'>🤖 {msg['content']}</div></div>",
-            unsafe_allow_html=True,
-        )
-
-# ================================
 # Input box
-# ================================
 user_input = st.chat_input("Ask me about any disease, symptoms, or prevention...")
 
 if user_input:
@@ -199,16 +172,43 @@ if user_input:
     bot_reply = f"*English:* {answer_en}\n\n🌍 *Hindi:* {answer_hi}"
     st.session_state.messages.append({"role": "bot", "content": bot_reply})
 
-    # ================================
-    # Automatic TTS ONLY for latest bot reply
-    # ================================
+# ================================
+# Display chat messages
+# ================================
+latest_bot_reply = None
+for msg in st.session_state.messages:
+    if msg["role"] == "user":
+        st.markdown(
+            f"<div style='display:flex; justify-content:flex-end; margin:5px;'>"
+            f"<div style='background-color:#003366; color:white; padding:10px; border-radius:15px; max-width:70%; "
+            f"box-shadow:0px 1px 3px rgba(0,0,0,0.3); white-space:pre-wrap;'>🧑 {msg['content']}</div></div>",
+            unsafe_allow_html=True,
+        )
+    else:
+        st.markdown(
+            f"<div style='display:flex; justify-content:flex-start; margin:5px;'>"
+            f"<div style='background-color:#000000; color:white; padding:10px; border-radius:15px; max-width:70%; "
+            f"box-shadow:0px 1px 3px rgba(0,0,0,0.3); white-space:pre-wrap;'>🤖 {msg['content']}</div></div>",
+            unsafe_allow_html=True,
+        )
+        latest_bot_reply = msg["content"]
+
+# ================================
+# Automatic TTS only for latest bot reply
+# ================================
+if latest_bot_reply:
+    # Extract only English part to speak
+    english_text = latest_bot_reply.split("🌍")[0].replace("*English:*", "").strip()
     components.html(f"""
-        <script>
-        var msg = new SpeechSynthesisUtterance(`{answer_en.replace('`','')}`);
-        window.speechSynthesis.cancel(); 
+    <script>
+    setTimeout(() => {{
+        var msg = new SpeechSynthesisUtterance(`{english_text.replace('`','')}`);
+        window.speechSynthesis.cancel();
         window.speechSynthesis.speak(msg);
-        </script>
+    }}, 600);
+    </script>
     """, height=0)
+
 
 
 
