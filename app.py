@@ -96,48 +96,37 @@ for msg in st.session_state.messages:
         )
 
 # ================================
-# Simple bottom text input
+# Bottom input form
 # ================================
-st.markdown("""
-<div style="position:fixed; bottom:0; width:100%; background:#0d0d0d; padding:10px; display:flex; justify-content:center; z-index:1000;">
-    <form method="post" style="display:flex; width:95%; max-width:600px;">
-        <input type="text" name="user_input" placeholder="Ask about any disease..." style="flex:1; border:none; border-radius:20px; padding:10px; font-size:16px;">
-        <input type="submit" value="Send" style="margin-left:5px; padding:10px 15px; border:none; border-radius:20px; background:#003366; color:white; cursor:pointer;">
-    </form>
-</div>
-""", unsafe_allow_html=True)
+with st.form(key="chat_form", clear_on_submit=True):
+    user_input = st.text_input("Type your message here...", key="user_input")
+    submit_button = st.form_submit_button("Send")
 
-# ================================
-# Capture input
-# ================================
-if "user_input_value" not in st.session_state:
-    st.session_state.user_input_value = ""
+    if submit_button and user_input:
+        # Add user message
+        st.session_state.messages.append({"role": "user", "content": user_input})
 
-# Use Streamlit's text_input for submission
-user_input = st.text_input("", key="hidden_input", label_visibility="collapsed")
-if user_input:
-    st.session_state.messages.append({"role": "user", "content": user_input})
+        # Get bot response
+        answer_en = find_answer_from_faqs(user_input)
+        if not answer_en:
+            answer_en = fetch_from_gemini(user_input)
+        if not answer_en or "Error" in answer_en:
+            answer_en = find_answer_from_faqs(user_input) or "Sorry, I cannot fetch this right now."
 
-    # Bot response
-    answer_en = find_answer_from_faqs(user_input)
-    if not answer_en:
-        answer_en = fetch_from_gemini(user_input)
-    if not answer_en or "Error" in answer_en:
-        answer_en = find_answer_from_faqs(user_input) or "Sorry, I cannot fetch this right now."
+        answer_hi = translate_to_language(answer_en, "hi")
+        bot_reply = f"**English:** {answer_en}\n\n🌍 **Hindi:** {answer_hi}"
+        st.session_state.messages.append({"role": "bot", "content": bot_reply})
 
-    answer_hi = translate_to_language(answer_en, "hi")
-    bot_reply = f"**English:** {answer_en}\n\n🌍 **Hindi:** {answer_hi}"
-    st.session_state.messages.append({"role": "bot", "content": bot_reply})
+        # Speak automatically
+        components.html(f"""
+        <script>
+        var msg = new SpeechSynthesisUtterance("{answer_en.replace('"','\\"')}");
+        window.speechSynthesis.speak(msg);
+        </script>
+        """, height=0)
 
-    # Text-to-speech
-    components.html(f"""
-    <script>
-    var msg = new SpeechSynthesisUtterance("{answer_en.replace('"','\\"')}");
-    window.speechSynthesis.speak(msg);
-    </script>
-    """, height=0)
+        st.experimental_rerun()
 
-    st.experimental_rerun()
 
 
 
