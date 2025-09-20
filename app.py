@@ -62,15 +62,13 @@ def translate_to_language(text, lang_code):
 # ================================
 st.set_page_config(page_title="HealthLingo", page_icon="💬", layout="wide")
 
-# Navbar
-st.markdown("""
-<div style="background: linear-gradient(90deg, #00b09b, #96c93d, #2193b0, #6dd5ed); padding:10px; border-radius:10px;">
-    <span style="font-size:22px; font-weight:bold; color:white;">HealthLingo</span>
-</div>
-""", unsafe_allow_html=True)
-
 # Title
-st.markdown("<h2 style='text-align:center;'><span style='color:green;'>Health</span><span style='color:blue;'>Lingo</span> – Your AI Health Assistant</h2>", unsafe_allow_html=True)
+st.markdown(
+    "<h2 style='text-align:center; margin-top:10px;'>"
+    "<span style='color:green;'>Health</span>"
+    "<span style='color:blue;'>Lingo</span> – Your AI Health Assistant</h2>",
+    unsafe_allow_html=True
+)
 
 # Clear chat
 if st.button("🗑 Clear Chat"):
@@ -79,64 +77,55 @@ if st.button("🗑 Clear Chat"):
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Chat display
+# Display chat bubbles
 for msg in st.session_state.messages:
     if msg["role"] == "user":
-        st.markdown(f"<div style='display:flex; justify-content:flex-end; margin:5px;'>"
-                    f"<div style='background-color:#003366; color:white; padding:10px; border-radius:20px; max-width:70%;'>🧑 {msg['content']}</div></div>", unsafe_allow_html=True)
+        st.markdown(
+            f"<div style='display:flex; justify-content:flex-end; margin:5px;'>"
+            f"<div style='background-color:#003366; color:white; padding:10px; border-radius:20px; max-width:70%;'>🧑 {msg['content']}</div></div>",
+            unsafe_allow_html=True
+        )
     else:
-        st.markdown(f"""
-        <div style='display:flex; justify-content:flex-start; align-items:center; margin:5px;'>
-            <div style='background-color:#000; color:white; padding:10px; border-radius:20px; max-width:70%;'>🤖 {msg['content']}</div>
-            <button onclick="var msg=new SpeechSynthesisUtterance(`{msg['content'].replace('`','')}`); window.speechSynthesis.speak(msg);" 
-                style='margin-left:5px; cursor:pointer; background:#333; color:white; border:none; border-radius:5px; padding:5px;'>🔊</button>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown(
+            f"<div style='display:flex; justify-content:flex-start; align-items:center; margin:5px;'>"
+            f"<div style='background-color:#000; color:white; padding:10px; border-radius:20px; max-width:70%;'>🤖 {msg['content']}</div>"
+            f"<button onclick=\"var msg=new SpeechSynthesisUtterance(`{msg['content'].replace('`','')}`); window.speechSynthesis.speak(msg);\" "
+            f"style='margin-left:5px; cursor:pointer; background:#333; color:white; border:none; border-radius:5px; padding:5px;'>🔊</button>"
+            f"</div>",
+            unsafe_allow_html=True
+        )
 
 # ================================
-# Sticky bottom input with submit
+# Simple bottom text input
 # ================================
 st.markdown("""
-<div style="position:fixed; bottom:0; width:100%; display:flex; justify-content:center; z-index:1000; background:#0d0d0d; padding:10px;">
-    <form id="chatForm" style="display:flex; width:95%; max-width:600px;">
-        <input name="user_input" type="text" placeholder="Ask about any disease..." 
-            style="flex:1; border:none; border-radius:20px; padding:10px; font-size:16px;">
+<div style="position:fixed; bottom:0; width:100%; background:#0d0d0d; padding:10px; display:flex; justify-content:center; z-index:1000;">
+    <form method="post" style="display:flex; width:95%; max-width:600px;">
+        <input type="text" name="user_input" placeholder="Ask about any disease..." style="flex:1; border:none; border-radius:20px; padding:10px; font-size:16px;">
         <input type="submit" value="Send" style="margin-left:5px; padding:10px 15px; border:none; border-radius:20px; background:#003366; color:white; cursor:pointer;">
     </form>
 </div>
 """, unsafe_allow_html=True)
 
 # ================================
-# Capture input using Streamlit form submission
+# Capture input
 # ================================
-def get_input():
-    from streamlit_js_eval import streamlit_js_eval
-    # get value from the input box
-    js_code = """
-    (() => {
-        const input = document.querySelector('input[name="user_input"]');
-        return input ? input.value : "";
-    })()
-    """
-    value = streamlit_js_eval(js_code)
-    return value
+if "user_input_value" not in st.session_state:
+    st.session_state.user_input_value = ""
 
-# Using st.form_submit_button alternative
-user_input = st.text_input("", key="input_fixed")  # hidden but required for Streamlit rerun
-
+# Use Streamlit's text_input for submission
+user_input = st.text_input("", key="hidden_input", label_visibility="collapsed")
 if user_input:
     st.session_state.messages.append({"role": "user", "content": user_input})
 
-    # Check FAQs
+    # Bot response
     answer_en = find_answer_from_faqs(user_input)
     if not answer_en:
         answer_en = fetch_from_gemini(user_input)
     if not answer_en or "Error" in answer_en:
         answer_en = find_answer_from_faqs(user_input) or "Sorry, I cannot fetch this right now."
 
-    # Translate
     answer_hi = translate_to_language(answer_en, "hi")
-
     bot_reply = f"**English:** {answer_en}\n\n🌍 **Hindi:** {answer_hi}"
     st.session_state.messages.append({"role": "bot", "content": bot_reply})
 
@@ -147,6 +136,9 @@ if user_input:
     window.speechSynthesis.speak(msg);
     </script>
     """, height=0)
+
+    st.experimental_rerun()
+
 
 
 
