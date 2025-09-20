@@ -147,23 +147,27 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 
 # ================================
-# Display Chat Messages
+# Container for chat messages
 # ================================
-for msg in st.session_state.messages:
-    if msg["role"] == "user":
-        st.markdown(
-            f"<div style='display:flex; justify-content:flex-end; margin:5px;'>"
-            f"<div style='background-color:#003366; color:white; padding:10px; border-radius:15px; max-width:70%; "
-            f"box-shadow:0px 1px 3px rgba(0,0,0,0.3); white-space:pre-wrap;'>🧑 {msg['content']}</div></div>",
-            unsafe_allow_html=True,
-        )
-    else:
-        st.markdown(
-            f"<div style='display:flex; justify-content:flex-start; margin:5px;'>"
-            f"<div style='background-color:#000000; color:white; padding:10px; border-radius:15px; max-width:70%; "
-            f"box-shadow:0px 1px 3px rgba(0,0,0,0.3); white-space:pre-wrap;'>🤖 {msg['content']}</div></div>",
-            unsafe_allow_html=True,
-        )
+chat_container = st.container()
+
+# Display previous chat messages
+with chat_container:
+    for msg in st.session_state.messages:
+        if msg["role"] == "user":
+            st.markdown(
+                f"<div style='display:flex; justify-content:flex-end; margin:5px;'>"
+                f"<div style='background-color:#003366; color:white; padding:10px; border-radius:15px; max-width:70%; "
+                f"box-shadow:0px 1px 3px rgba(0,0,0,0.3); white-space:pre-wrap;'>🧑 {msg['content']}</div></div>",
+                unsafe_allow_html=True,
+            )
+        else:
+            st.markdown(
+                f"<div style='display:flex; justify-content:flex-start; margin:5px;'>"
+                f"<div style='background-color:#000000; color:white; padding:10px; border-radius:15px; max-width:70%; "
+                f"box-shadow:0px 1px 3px rgba(0,0,0,0.3); white-space:pre-wrap;'>🤖 {msg['content']}</div></div>",
+                unsafe_allow_html=True,
+            )
 
 # ================================
 # Input Box
@@ -171,7 +175,15 @@ for msg in st.session_state.messages:
 user_input = st.chat_input("Ask me about any disease, symptoms, or prevention...")
 
 if user_input:
+    # --- Append user message immediately ---
     st.session_state.messages.append({"role": "user", "content": user_input})
+    with chat_container:
+        st.markdown(
+            f"<div style='display:flex; justify-content:flex-end; margin:5px;'>"
+            f"<div style='background-color:#003366; color:white; padding:10px; border-radius:15px; max-width:70%; "
+            f"box-shadow:0px 1px 3px rgba(0,0,0,0.3); white-space:pre-wrap;'>🧑 {user_input}</div></div>",
+            unsafe_allow_html=True,
+        )
 
     # --- Bot reply ---
     answer_en = find_answer_from_faqs(user_input)
@@ -179,22 +191,21 @@ if user_input:
         answer_en = fetch_from_gemini(user_input)
     if not answer_en or "Error" in answer_en:
         answer_en = find_answer_from_faqs(user_input) or "Sorry, I cannot fetch this right now."
-
     answer_hi = translate_to_language(answer_en, "hi")
     bot_reply = f"*English:* {answer_en}\n\n🌍 *Hindi:* {answer_hi}"
-
-    # --- Append and immediately display ---
     st.session_state.messages.append({"role": "bot", "content": bot_reply})
-    for msg in [{"role": "bot", "content": bot_reply}]:
+
+    # --- Display bot reply immediately ---
+    with chat_container:
         st.markdown(
             f"<div style='display:flex; justify-content:flex-start; margin:5px;'>"
             f"<div style='background-color:#000000; color:white; padding:10px; border-radius:15px; max-width:70%; "
-            f"box-shadow:0px 1px 3px rgba(0,0,0,0.3); white-space:pre-wrap;'>🤖 {msg['content']}</div></div>",
+            f"box-shadow:0px 1px 3px rgba(0,0,0,0.3); white-space:pre-wrap;'>🤖 {bot_reply}</div></div>",
             unsafe_allow_html=True,
         )
 
     # ================================
-    # TTS for latest reply
+    # TTS
     # ================================
     components.html(f"""
         <script>
@@ -203,6 +214,7 @@ if user_input:
         window.speechSynthesis.speak(msg);
         </script>
     """, height=0)
+
 
 
 
