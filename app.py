@@ -4,6 +4,10 @@ import time
 import streamlit as st
 from google import genai
 from deep_translator import GoogleTranslator
+from gtts import gTTS
+import tempfile
+from streamlit_webrtc import webrtc_streamer, WebRtcMode, ClientSettings
+import speech_recognition as sr
 
 # ================================
 # Load Gemini API Key from Streamlit secrets
@@ -75,69 +79,78 @@ def translate_to_language(text, lang_code):
         return text
 
 # ================================
+# Text-to-Speech
+# ================================
+def speak_text(text, lang="en"):
+    try:
+        tts = gTTS(text=text, lang=lang)
+        tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
+        tts.save(tmp_file.name)
+        return tmp_file.name
+    except Exception as e:
+        return None
+
+# ================================
+# Speech-to-Text (using recognizer)
+# ================================
+def speech_to_text(audio_bytes):
+    r = sr.Recognizer()
+    with sr.AudioFile(audio_bytes) as source:
+        audio = r.record(source)
+        try:
+            return r.recognize_google(audio)
+        except sr.UnknownValueError:
+            return "⚠ Could not understand audio."
+        except sr.RequestError:
+            return "⚠ Speech recognition service unavailable."
+
+# ================================
 # Streamlit UI
 # ================================
 st.set_page_config(page_title="HealthLingo", page_icon="💬")
 
-# ✅ Responsive Navbar
+# Custom Navbar
 st.markdown("""
     <style>
+        body {
+            background-color: #0d0d0d;
+        }
         .navbar {
             display: flex;
-            flex-wrap: wrap; /* allow wrapping on mobile */
+            flex-wrap: wrap;
             align-items: center;
             justify-content: space-between;
-            background: linear-gradient(90deg, #00b09b, #96c93d, #2193b0, #6dd5ed);
-            padding: 12px 20px;
+            background: linear-gradient(90deg, #00b09b, #2193b0);
+            padding: 10px 15px;
             border-radius: 10px;
-            box-shadow: 0px 3px 6px rgba(0,0,0,0.2);
+            box-shadow: 0px 3px 6px rgba(0,0,0,0.3);
             position: sticky;
             top: 0;
             z-index: 1000;
-        }
-        .navbar img {
-            height: 35px;
-            margin-right: 10px;
         }
         .navbar .logo-text {
             font-size: 20px;
             font-weight: bold;
             color: white;
-            font-family: 'Segoe UI', sans-serif;
         }
         .navbar-links {
             display: flex;
             flex-wrap: wrap;
-            justify-content: center;
-            margin-top: 8px;
+            gap: 10px;
         }
         .navbar-links a {
-            margin: 6px 8px;
             text-decoration: none;
-            font-size: 15px;
+            font-size: 14px;
             font-weight: 500;
             color: white;
-            transition: 0.3s;
         }
         .navbar-links a:hover {
             color: yellow;
         }
-        /* ✅ Mobile responsive (stacked layout) */
-        @media (max-width: 600px) {
-            .navbar {
-                flex-direction: column;
-                text-align: center;
-            }
-            .navbar-links {
-                flex-direction: column;
-                margin-top: 10px;
-            }
-        }
     </style>
-
     <div class="navbar">
         <div style="display:flex; align-items:center;">
-            <img src="https://img.icons8.com/color/96/medical-doctor.png" alt="HealthLingo Logo">
+            <img src="https://img.icons8.com/color/48/medical-doctor.png" alt="HealthLingo Logo">
             <span class="logo-text">HealthLingo</span>
         </div>
         <div class="navbar-links">
@@ -169,20 +182,32 @@ for msg in st.session_state.messages:
     if msg["role"] == "user":
         st.markdown(
             f"<div style='display:flex; justify-content:flex-end; margin:5px;'>"
-            f"<div style='background-color:#003366; color:white; padding:10px; border-radius:15px; max-width:70%; "
-            f"box-shadow:0px 1px 3px rgba(0,0,0,0.3); white-space:pre-wrap;'>🧑 {msg['content']}</div></div>",
+            f"<div style='background-color:#003366; color:white; padding:10px; border-radius:15px; max-width:70%;'>🧑 {msg['content']}</div></div>",
             unsafe_allow_html=True,
         )
     else:
         st.markdown(
             f"<div style='display:flex; justify-content:flex-start; margin:5px;'>"
-            f"<div style='background-color:#000000; color:white; padding:10px; border-radius:15px; max-width:70%; "
-            f"box-shadow:0px 1px 3px rgba(0,0,0,0.3); white-space:pre-wrap;'>🤖 {msg['content']}</div></div>",
+            f"<div style='background-color:#000000; color:white; padding:10px; border-radius:15px; max-width:70%;'>🤖 {msg['content']}</div></div>",
             unsafe_allow_html=True,
         )
 
-# Input box
+# ================================
+# User Input (Text)
+# ================================
 user_input = st.chat_input("Ask me about any disease, symptoms, or prevention...")
+
+# ================================
+# Voice Input
+# ================================
+st.markdown("🎤 **Or speak your query**")
+webrtc_ctx = webrtc_streamer(
+    key="speech",
+    mode=WebRtcMode.RECVONLY,
+    client_settings=ClientSettings(
+        media_stream_constraints={"audio": True, "video": False}
+    )
+)
 
 if user_input:
     st.session_state.messages.append({"role": "user", "content": user_input})
@@ -205,5 +230,9 @@ if user_input:
     bot_reply = f"*English:* {answer_en}\n\n🌍 *Hindi:* {answer_hi}"
     st.session_state.messages.append({"role": "bot", "content": bot_reply})
 
-    st.rerun()
+    # Text-to-Speech for reply
+    audio_file = speak_text(answer_en, lang="en")
+    if audio_file:
+        st.audio(audio_file, format="audio/mp3")
 
+    st.rerun()

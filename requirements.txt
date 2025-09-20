@@ -78,3 +78,10 @@ watchdog==6.0.0
 websockets==15.0.1
 wikipedia==1.4.0
 Wikipedia-API==0.8.1
+streamlit
+google-genai
+deep-translator
+gTTS
+streamlit-webrtc
+SpeechRecognition
+pyaudio
