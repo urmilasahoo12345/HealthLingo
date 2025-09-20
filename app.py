@@ -184,17 +184,18 @@ if user_input:
     st.session_state.messages.append({"role": "bot", "content": bot_reply})
 
     # ================================
-    # Automatic TTS ONLY for latest bot reply
+    # Automatic TTS for latest bot reply with delay
     # ================================
     components.html(f"""
-        <script>
+    <script>
+    setTimeout(() => {{
         var msg = new SpeechSynthesisUtterance(`{answer_en.replace('`','')}`);
         window.speechSynthesis.cancel(); // stop any previous speech
         window.speechSynthesis.speak(msg);
-        </script>
+    }}, 500); // ensure execution after rendering
+    </script>
     """, height=0)
 
-    st.rerun()
 
 
 
