@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 from google import genai
 from deep_translator import GoogleTranslator
 import streamlit.components.v1 as components
+import pyttsx3
 
 # ================================
 # Load environment variables
@@ -78,6 +79,14 @@ def translate_to_language(text, lang_code):
         return text
 
 # ================================
+# Text-to-speech engine
+# ================================
+engine = pyttsx3.init()
+def speak_text(text):
+    engine.say(text)
+    engine.runAndWait()
+
+# ================================
 # Streamlit UI
 # ================================
 st.set_page_config(page_title="HealthLingo", page_icon="💬")
@@ -90,14 +99,19 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# Clear chat button
+# Clear chat
 if st.button("🗑 Clear Chat"):
     st.session_state.messages = []
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
+if "voice_input" not in st.session_state:
+    st.session_state.voice_input = ""
+
+# ================================
 # Display chat bubbles
+# ================================
 for msg in st.session_state.messages:
     if msg["role"] == "user":
         st.markdown(
@@ -110,12 +124,12 @@ for msg in st.session_state.messages:
         st.markdown(
             f"<div style='display:flex; justify-content:flex-start; margin:5px;'>"
             f"<div style='background-color:#000000; color:white; padding:10px; border-radius:15px; max-width:70%; "
-            f"box-shadow:0px 1px 3px rgba(0,0,0,0.3); white-space:pre-wrap;'>{msg['content']}</div></div>",
+            f"box-shadow:0px 1px 3px rgba(0,0,0,0.3); white-space:pre-wrap;'>🤖 {msg['content']}</div></div>",
             unsafe_allow_html=True,
         )
 
 # ================================
-# Floating input bar with mic
+# Floating input bar with voice support
 # ================================
 voice_html = """
 <div style="position:fixed; bottom:10px; width:100%; display:flex; justify-content:center; z-index:1000;">
@@ -140,12 +154,9 @@ recognition.onresult = function(event) {
     var transcript = event.results[0][0].transcript;
     const inputBox = document.getElementById("chat_input");
     inputBox.value = transcript;
-
-    // Send transcript to Streamlit
     window.parent.postMessage({isStreamlitMessage:true, type:'VOICE_INPUT', text: transcript}, "*");
 };
 
-// Enter key triggers submit
 document.getElementById("chat_input").addEventListener("keydown", function(e){
     if(e.key === "Enter"){
         window.parent.postMessage({isStreamlitMessage:true, type:'VOICE_INPUT', text: this.value}, "*");
@@ -158,40 +169,39 @@ document.getElementById("chat_input").addEventListener("keydown", function(e){
 components.html(voice_html, height=80)
 
 # ================================
-# Capture voice input from JS
+# Capture voice input
 # ================================
-if "voice_input" not in st.session_state:
-    st.session_state.voice_input = ""
-
 components.html("""
 <script>
 window.addEventListener("message", (event) => {
     if(event.data?.type === "VOICE_INPUT"){
         const value = event.data.text;
-        window.parent.postMessage({isStreamlitMessage:true, type:'TEXT_SUBMIT', text:value}, "*");
+        const inputBox = window.parent.document.querySelector("textarea");
+        if(inputBox){
+            inputBox.value = value;
+            inputBox.dispatchEvent(new Event("input", { bubbles: true }));
+        }
     }
 });
 </script>
 """, height=0)
 
 # ================================
-# Process input and reply
+# Process voice or typed input
 # ================================
-if "pending_input" not in st.session_state:
-    st.session_state.pending_input = ""
+if st.session_state.voice_input:
+    user_input = st.session_state.voice_input
+    st.session_state.voice_input = ""
+else:
+    user_input = st.text_input("Ask me about any disease, symptoms, or prevention...", key="text_input")
 
-# Receive voice/text input
-from streamlit_javascript import st_javascript
-voice_msg = st_javascript("window.addEventListener('message', (e)=>{ return e.data?.text || '' })", key="js_voice")
-
-user_input = st.session_state.pending_input or voice_msg
 if user_input:
     st.session_state.messages.append({"role": "user", "content": user_input})
 
     # 1. Check FAQs
     answer_en = find_answer_from_faqs(user_input)
 
-    # 2. Query Gemini if FAQ not found
+    # 2. If not found, use Gemini
     if not answer_en:
         answer_en = fetch_from_gemini(user_input)
 
@@ -202,15 +212,15 @@ if user_input:
     # 4. Translate to Hindi
     answer_hi = translate_to_language(answer_en, "hi")
 
-    # Append bot reply
+    # 5. Bot reply
     bot_reply = f"**English:** {answer_en}\n\n🌍 **Hindi:** {answer_hi}"
     st.session_state.messages.append({"role": "bot", "content": bot_reply})
 
-    # Browser TTS
-    components.html(f"<script>var msg=new SpeechSynthesisUtterance(); msg.text=`{answer_en}`; window.speechSynthesis.speak(msg);</script>", height=0)
+    # 6. Speak the bot reply
+    speak_text(answer_en)
 
-    st.session_state.pending_input = ""
-    st.rerun()
+    st.experimental_rerun()
+
 
 
 
