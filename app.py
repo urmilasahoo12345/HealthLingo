@@ -2,15 +2,14 @@ import os
 import json
 import time
 import streamlit as st
-import streamlit.components.v1 as components
 from google import genai
 from deep_translator import GoogleTranslator
-from gtts import gTTS
+import streamlit.components.v1 as components
 
 # ================================
 # Load Gemini API Key from Streamlit secrets
 # ================================
-gemini_key = st.secrets.get("GEMINI_API_KEY", None)
+gemini_key = os.getenv("GEMINI_API_KEY")
 
 if not gemini_key:
     st.error("⚠ GEMINI_API_KEY not found in Streamlit secrets.")
@@ -81,55 +80,37 @@ def translate_to_language(text, lang_code):
 # ================================
 st.set_page_config(page_title="HealthLingo", page_icon="💬")
 
-# Global styles
+# Navbar
 st.markdown("""
     <style>
-        body {
-            background-color: #0d0d0d;
-        }
-        .stApp {
-            background-color: #0d0d0d;
-        }
         .navbar {
             display: flex;
-            flex-wrap: wrap;
             align-items: center;
             justify-content: space-between;
-            background: linear-gradient(90deg, #00b09b, #2193b0);
+            background: linear-gradient(90deg, #00b09b, #96c93d, #2193b0, #6dd5ed);
             padding: 12px 20px;
             border-radius: 10px;
-            box-shadow: 0px 3px 6px rgba(0,0,0,0.3);
+            box-shadow: 0px 3px 6px rgba(0,0,0,0.2);
             position: sticky;
             top: 0;
             z-index: 1000;
         }
-        .navbar img {
-            height: 40px;
-            margin-right: 10px;
-        }
-        .navbar .logo-text {
-            font-size: 22px;
-            font-weight: bold;
-            color: white;
-            text-shadow: 0 0 8px #00ffcc;
-        }
-        .navbar-links {
-            display: flex;
-            flex-wrap: wrap;
-        }
+        .navbar img {height: 40px; margin-right: 10px;}
+        .navbar .logo-text {font-size: 22px; font-weight: bold; color: white; font-family: 'Segoe UI', sans-serif;}
         .navbar-links a {
-            margin: 4px 8px;
+            margin: 0 8px;
             text-decoration: none;
-            font-size: 16px;
+            font-size: 14px;
             font-weight: 500;
             color: white;
             transition: 0.3s;
         }
-        .navbar-links a:hover {
-            color: yellow;
+        .navbar-links a:hover {color: yellow;}
+        @media(max-width:600px){
+            .navbar-links {display:flex; flex-wrap:wrap;}
+            .navbar-links a {margin:4px;}
         }
     </style>
-
     <div class="navbar">
         <div style="display:flex; align-items:center;">
             <img src="https://img.icons8.com/color/96/medical-doctor.png" alt="HealthLingo Logo">
@@ -152,14 +133,14 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# Clear chat button
+# Clear chat
 if st.button("🗑 Clear Chat"):
     st.session_state.messages = []
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Display chat history
+# Display chat history with WhatsApp-style bubbles
 for msg in st.session_state.messages:
     if msg["role"] == "user":
         st.markdown(
@@ -177,73 +158,94 @@ for msg in st.session_state.messages:
         )
 
 # ================================
-# Voice Input (Web Speech API)
+# Voice + Text input
 # ================================
-st.markdown("### 🎤 Voice Input")
-components.html("""
-    <button id="start-btn">🎤 Speak</button>
-    <p id="result"></p>
+st.markdown("""
+    <style>
+        .mic-container {display:flex; align-items:center; justify-content:center;}
+        .mic-button {
+            background-color:#2193b0;
+            color:white;
+            border:none;
+            border-radius:50%;
+            width:40px;
+            height:40px;
+            font-size:18px;
+            margin-left:10px;
+            cursor:pointer;
+            box-shadow:0 0 8px #00f5ff;
+        }
+        .mic-button:hover {background-color:#1a7c94;}
+    </style>
+""", unsafe_allow_html=True)
+
+col1, col2 = st.columns([9,1])
+with col1:
+    user_input = st.chat_input("Ask me about any disease, symptoms, or prevention...")
+
+with col2:
+    mic_html = """
+    <div class="mic-container">
+        <button id="micBtn" class="mic-button">🎤</button>
+    </div>
     <script>
         var recognition = new(window.SpeechRecognition || window.webkitSpeechRecognition)();
         recognition.lang = "en-US";
         recognition.interimResults = false;
         recognition.maxAlternatives = 1;
 
-        document.getElementById("start-btn").onclick = function() {
+        document.getElementById("micBtn").onclick = function() {
             recognition.start();
         };
 
         recognition.onresult = function(event) {
             var transcript = event.results[0][0].transcript;
-            var resultElement = document.getElementById("result");
-            resultElement.innerHTML = "You said: " + transcript;
-
-            // Send transcript back to Streamlit input
             const streamlitDoc = window.parent.document;
-            const textarea = streamlitDoc.querySelector('textarea');
-            if (textarea) {
-                textarea.value = transcript;
-                textarea.dispatchEvent(new Event('input', { bubbles: true }));
+            const input = streamlitDoc.querySelector('textarea');
+            if (input) {
+                input.value = transcript;
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+                const enterEvent = new KeyboardEvent("keydown", {bubbles: true, cancelable: true, keyCode: 13});
+                input.dispatchEvent(enterEvent);
             }
         };
     </script>
-""", height=120)
+    """
+    components.html(mic_html, height=60)
 
 # ================================
-# Text Input
+# Process user input + voice reply
 # ================================
-user_input = st.chat_input("Ask me about any disease, symptoms, or prevention...")
-
 if user_input:
-    st.session_state.messages.append({"role": "user", "content": user_input})
+    st.session_state.messages.append({"role":"user","content":user_input})
 
-    # 1. Check FAQs
+    # FAQs first
     answer_en = find_answer_from_faqs(user_input)
-
-    # 2. If not found, use Gemini
     if not answer_en:
         answer_en = fetch_from_gemini(user_input)
-
-    # 3. Fallback if Gemini fails
     if not answer_en or "Error" in answer_en:
         answer_en = find_answer_from_faqs(user_input) or "Sorry, I cannot fetch this right now."
 
-    # 4. Translate to Hindi
+    # Translate to Hindi
     answer_hi = translate_to_language(answer_en, "hi")
 
-    # Final bot reply
-    bot_reply = f"*English:* {answer_en}\n\n🌍 *Hindi:* {answer_hi}"
-    st.session_state.messages.append({"role": "bot", "content": bot_reply})
+    bot_reply = f"**English:** {answer_en}\n\n🌍 **Hindi:** {answer_hi}"
+    st.session_state.messages.append({"role":"bot","content":bot_reply})
 
-    # 5. Voice reply with gTTS
-    try:
-        tts = gTTS(answer_en)
-        tts.save("reply.mp3")
-        audio_file = open("reply.mp3", "rb")
-        st.audio(audio_file.read(), format="audio/mp3")
-    except Exception as e:
-        st.warning(f"Audio reply failed: {e}")
+    # ================================
+    # Voice reply
+    # ================================
+    tts_html = f"""
+    <script>
+        var msg = new SpeechSynthesisUtterance();
+        msg.text = `{answer_en}`;
+        msg.lang = 'en-US';
+        window.speechSynthesis.speak(msg);
+    </script>
+    """
+    components.html(tts_html, height=0)
 
     st.rerun()
+
 
 
