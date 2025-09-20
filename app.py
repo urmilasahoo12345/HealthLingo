@@ -6,7 +6,6 @@ from dotenv import load_dotenv
 from google import genai
 from deep_translator import GoogleTranslator
 import streamlit.components.v1 as components
-import pyttsx3
 
 # ================================
 # Load environment variables
@@ -38,7 +37,7 @@ def find_answer_from_faqs(user_query: str):
     return None
 
 # ================================
-# Gemini Query
+# Gemini Query with Retry
 # ================================
 def fetch_from_gemini(user_query: str, retries=3):
     prompt = f"""
@@ -77,14 +76,6 @@ def translate_to_language(text, lang_code):
         return GoogleTranslator(source="en", target=lang_code).translate(text)
     except:
         return text
-
-# ================================
-# Text-to-Speech
-# ================================
-tts_engine = pyttsx3.init()
-def speak_text(text):
-    tts_engine.say(text)
-    tts_engine.runAndWait()
 
 # ================================
 # Streamlit UI
@@ -149,9 +140,12 @@ recognition.onresult = function(event) {
     var transcript = event.results[0][0].transcript;
     const inputBox = document.getElementById("chat_input");
     inputBox.value = transcript;
+
+    // Send transcript to Streamlit
     window.parent.postMessage({isStreamlitMessage:true, type:'VOICE_INPUT', text: transcript}, "*");
 };
 
+// Enter key triggers submit
 document.getElementById("chat_input").addEventListener("keydown", function(e){
     if(e.key === "Enter"){
         window.parent.postMessage({isStreamlitMessage:true, type:'VOICE_INPUT', text: this.value}, "*");
@@ -164,43 +158,24 @@ document.getElementById("chat_input").addEventListener("keydown", function(e){
 components.html(voice_html, height=80)
 
 # ================================
-# Capture voice input and process bot reply
+# Capture voice input from JS
 # ================================
 if "voice_input" not in st.session_state:
     st.session_state.voice_input = ""
 
-# Receive voice input from JS
-voice_event = st.experimental_get_query_params().get("VOICE_INPUT")
-if voice_event:
-    user_input = voice_event[0]
-    st.session_state.voice_input = user_input
+components.html("""
+<script>
+window.addEventListener("message", (event) => {
+    if(event.data?.type === "VOICE_INPUT"){
+        const value = event.data.text;
+        const inputBox = window.parent.document.querySelector("textarea");
+        if(inputBox){
+            inputBox.value = value;
+            inputBox.dispatchEvent(new Event("input", { bubbles: true }));
+        }
+    }
+});
+</script>
+""", height=0)
 
-# If there is new input
-user_input = st.session_state.get("voice_input", "")
-if user_input:
-    st.session_state.messages.append({"role": "user", "content": user_input})
-
-    # Check FAQs first
-    answer_en = find_answer_from_faqs(user_input)
-
-    # If not found, use Gemini
-    if not answer_en:
-        answer_en = fetch_from_gemini(user_input)
-
-    # Fallback
-    if not answer_en or "Error" in answer_en:
-        answer_en = find_answer_from_faqs(user_input) or "Sorry, I cannot fetch this right now."
-
-    # Translate to Hindi
-    answer_hi = translate_to_language(answer_en, "hi")
-
-    # Bot reply
-    bot_reply = f"**English:** {answer_en}\n\n🌍 **Hindi:** {answer_hi}"
-    st.session_state.messages.append({"role": "bot", "content": bot_reply})
-
-    # Speak bot reply
-    speak_text(answer_en)
-
-    st.session_state.voice_input = ""  # Reset
-    st.experimental_rerun()
 
