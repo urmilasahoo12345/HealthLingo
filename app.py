@@ -70,58 +70,70 @@ st.markdown(
     unsafe_allow_html=True
 )
 
+# Initialize session_state
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
 # Clear chat
 if st.button("🗑 Clear Chat"):
     st.session_state.messages = []
 
-if "messages" not in st.session_state:
-    st.session_state.messages = []
-
+# ================================
 # Display chat bubbles
-for msg in st.session_state.messages:
-    if msg["role"] == "user":
-        st.markdown(
-            f"<div style='display:flex; justify-content:flex-end; margin:5px;'>"
-            f"<div style='background-color:#003366; color:white; padding:10px; border-radius:20px; max-width:70%;'>🧑 {msg['content']}</div></div>",
-            unsafe_allow_html=True
-        )
-    else:
-        st.markdown(
-            f"<div style='display:flex; justify-content:flex-start; align-items:center; margin:5px;'>"
-            f"<div style='background-color:#000; color:white; padding:10px; border-radius:20px; max-width:70%;'>🤖 {msg['content']}</div>"
-            f"<button onclick=\"var msg=new SpeechSynthesisUtterance(`{msg['content'].replace('`','')}`); window.speechSynthesis.speak(msg);\" "
-            f"style='margin-left:5px; cursor:pointer; background:#333; color:white; border:none; border-radius:5px; padding:5px;'>🔊</button>"
-            f"</div>",
-            unsafe_allow_html=True
-        )
+# ================================
+def display_messages():
+    for msg in st.session_state.messages:
+        if msg["role"] == "user":
+            st.markdown(
+                f"<div style='display:flex; justify-content:flex-end; margin:5px;'>"
+                f"<div style='background-color:#003366; color:white; padding:10px; border-radius:20px; max-width:70%;'>🧑 {msg['content']}</div></div>",
+                unsafe_allow_html=True
+            )
+        else:
+            st.markdown(
+                f"<div style='display:flex; justify-content:flex-start; align-items:center; margin:5px;'>"
+                f"<div style='background-color:#000; color:white; padding:10px; border-radius:20px; max-width:70%;'>🤖 {msg['content']}</div>"
+                f"<button onclick=\"var msg=new SpeechSynthesisUtterance(`{msg['content'].replace('`','')}`); window.speechSynthesis.speak(msg);\" "
+                f"style='margin-left:5px; cursor:pointer; background:#333; color:white; border:none; border-radius:5px; padding:5px;'>🔊</button>"
+                f"</div>",
+                unsafe_allow_html=True
+            )
+
+display_messages()
 
 # ================================
-# Bottom input form
+# Bottom input (sticky)
 # ================================
-user_input = st.text_input("Type your message here...", key="user_input")
+def send_message():
+    user_input = st.session_state.user_input.strip()
+    if user_input:
+        st.session_state.messages.append({"role": "user", "content": user_input})
 
-if st.button("Send") and user_input:
-    # Add user message
-    st.session_state.messages.append({"role": "user", "content": user_input})
+        # Bot response
+        answer_en = find_answer_from_faqs(user_input)
+        if not answer_en:
+            answer_en = fetch_from_gemini(user_input)
+        if not answer_en or "Error" in answer_en:
+            answer_en = find_answer_from_faqs(user_input) or "Sorry, I cannot fetch this right now."
 
-    # Get bot response
-    answer_en = find_answer_from_faqs(user_input)
-    if not answer_en:
-        answer_en = fetch_from_gemini(user_input)
-    if not answer_en or "Error" in answer_en:
-        answer_en = find_answer_from_faqs(user_input) or "Sorry, I cannot fetch this right now."
+        answer_hi = translate_to_language(answer_en, "hi")
+        bot_reply = f"**English:** {answer_en}\n\n🌍 **Hindi:** {answer_hi}"
+        st.session_state.messages.append({"role": "bot", "content": bot_reply})
 
-    answer_hi = translate_to_language(answer_en, "hi")
-    bot_reply = f"**English:** {answer_en}\n\n🌍 **Hindi:** {answer_hi}"
-    st.session_state.messages.append({"role": "bot", "content": bot_reply})
+        # Speak automatically
+        components.html(f"""
+        <script>
+        var msg = new SpeechSynthesisUtterance("{answer_en.replace('"','\\"')}");
+        window.speechSynthesis.speak(msg);
+        </script>
+        """, height=0)
 
-    # Speak automatically
-    components.html(f"""
-    <script>
-    var msg = new SpeechSynthesisUtterance("{answer_en.replace('"','\\"')}");
-    window.speechSynthesis.speak(msg);
-    </script>
-    """, height=0)
+        # Clear input box
+        st.session_state.user_input = ""
+
+# Sticky input form
+st.text_input("Type your message here...", key="user_input", on_change=send_message)
+
 
 
 
