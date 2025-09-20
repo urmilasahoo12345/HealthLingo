@@ -100,38 +100,12 @@ st.markdown("""
     top: 0;
     z-index: 1000;
 }
-.navbar img {
-    height: 40px;
-    margin-right: 10px;
-}
-.navbar .logo-text {
-    font-size: 22px;
-    font-weight: bold;
-    color: white;
-    font-family: 'Segoe UI', sans-serif;
-}
-.navbar-links {
-    display: flex;
-    flex-wrap: wrap;
-    margin-top: 5px;
-}
-.navbar-links a {
-    margin: 5px 8px;
-    text-decoration: none;
-    font-size: 16px;
-    font-weight: 500;
-    color: white;
-    transition: 0.3s;
-}
-.navbar-links a:hover {
-    color: yellow;
-}
-@media (max-width: 600px){
-    .navbar-links {
-        width: 100%;
-        justify-content: center;
-    }
-}
+.navbar img { height: 40px; margin-right: 10px; }
+.navbar .logo-text { font-size: 22px; font-weight: bold; color: white; font-family: 'Segoe UI', sans-serif; }
+.navbar-links { display: flex; flex-wrap: wrap; margin-top: 5px; }
+.navbar-links a { margin: 5px 8px; text-decoration: none; font-size: 16px; font-weight: 500; color: white; transition: 0.3s; }
+.navbar-links a:hover { color: yellow; }
+@media (max-width: 600px){ .navbar-links { width: 100%; justify-content: center; } }
 </style>
 
 <div class="navbar">
@@ -148,9 +122,7 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# ================================
 # Title below navbar
-# ================================
 st.markdown(
     "<h2 style='text-align:center; margin-top:10px;'>"
     "<span style='color:green;'>Health</span>"
@@ -165,10 +137,8 @@ if st.button("🗑 Clear Chat"):
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# ================================
-# Display chat bubbles
-# ================================
-for msg in st.session_state.messages:
+# Display chat bubbles with speaker button for bot replies
+for idx, msg in enumerate(st.session_state.messages):
     if msg["role"] == "user":
         st.markdown(
             f"<div style='display:flex; justify-content:flex-end; margin:5px;'>"
@@ -177,64 +147,32 @@ for msg in st.session_state.messages:
             unsafe_allow_html=True,
         )
     else:
+        # Add speaker button next to bot message
         st.markdown(
-            f"<div style='display:flex; justify-content:flex-start; margin:5px;'>"
-            f"<div style='background-color:#000000; color:white; padding:10px; border-radius:20px; max-width:70%; "
-            f"box-shadow:0px 1px 3px rgba(0,0,0,0.3); white-space:pre-wrap;'>🤖 {msg['content']}</div></div>",
+            f"""
+            <div style='display:flex; justify-content:flex-start; align-items:center; margin:5px;'>
+                <div style='background-color:#000000; color:white; padding:10px; border-radius:20px; max-width:70%;
+                            box-shadow:0px 1px 3px rgba(0,0,0,0.3); white-space:pre-wrap;'>🤖 {msg['content']}</div>
+                <button onclick="var msg=new SpeechSynthesisUtterance(`{msg['content'].replace('`','')}`); window.speechSynthesis.speak(msg);" 
+                        style='margin-left:5px; cursor:pointer; background:#333; color:white; border:none; border-radius:5px; padding:5px;'>🔊</button>
+            </div>
+            """,
             unsafe_allow_html=True,
         )
 
 # ================================
-# Floating WhatsApp-style input bar
+# Fixed bottom input
 # ================================
-floating_input = """
-<div style="position:fixed; bottom:10px; width:100%; display:flex; justify-content:center; z-index:1000;">
-    <div style="display:flex; width:95%; max-width:600px; background-color:#111111; border-radius:25px; padding:5px; align-items:center;">
-        <input type="text" id="chat_input" placeholder="Ask about any disease..." 
-               style="flex:1; border:none; background:transparent; color:white; padding:10px; font-size:16px; border-radius:20px;">
-        <button id="sendBtn" style="background:none; border:none; color:white; font-size:22px; margin-left:5px; cursor:pointer;">📩</button>
-    </div>
-</div>
+st.markdown("""
+<style>
+.stChatInput {position: fixed; bottom: 0; width: 100%; max-width: 600px; left: 50%; transform: translateX(-50%);}
+</style>
+""", unsafe_allow_html=True)
 
-<script>
-document.getElementById("sendBtn").onclick = function(){
-    const inputBox = document.getElementById("chat_input");
-    window.parent.postMessage({isStreamlitMessage:true, type:'CHAT_INPUT', text: inputBox.value}, "*");
-    inputBox.value = "";
-};
+user_input = st.text_input("Type your message...", key="input_bar")
 
-document.getElementById("chat_input").addEventListener("keydown", function(e){
-    if(e.key === "Enter"){
-        window.parent.postMessage({isStreamlitMessage:true, type:'CHAT_INPUT', text: this.value}, "*");
-        this.value = "";
-    }
-});
-</script>
-"""
-
-components.html(floating_input, height=80)
-
-# ================================
-# Capture input from JS
-# ================================
-if "chat_input" not in st.session_state:
-    st.session_state.chat_input = ""
-
-components.html("""
-<script>
-window.addEventListener("message", (event) => {
-    if(event.data?.type === "CHAT_INPUT"){
-        const value = event.data.text;
-        window.parent.postMessage({isStreamlitMessage:true, type:'SET_INPUT', text: value}, "*");
-    }
-});
-</script>
-""", height=0)
-
-# ================================
-# Process input from floating bar
-# ================================
-def process_input(user_input):
+if user_input:
+    # Append user input and process bot reply
     st.session_state.messages.append({"role": "user", "content": user_input})
 
     # Check FAQs
@@ -250,11 +188,11 @@ def process_input(user_input):
     # Translate to Hindi
     answer_hi = translate_to_language(answer_en, "hi")
 
-    # Final bot reply
+    # Bot reply
     bot_reply = f"**English:** {answer_en}\n\n🌍 **Hindi:** {answer_hi}"
     st.session_state.messages.append({"role": "bot", "content": bot_reply})
 
-    # Text-to-Speech
+    # Text-to-speech
     bot_reply_js = f"""
     <script>
     var msg = new SpeechSynthesisUtterance("{answer_en.replace('"','\\"')}");
@@ -262,28 +200,7 @@ def process_input(user_input):
     </script>
     """
     components.html(bot_reply_js, height=0)
-    st.rerun()
-
-# ================================
-# Capture and process input
-# ================================
-if "new_input" not in st.session_state:
-    st.session_state.new_input = ""
-
-components.html("""
-<script>
-window.addEventListener("message", (event) => {
-    if(event.data?.type === "SET_INPUT"){
-        const value = event.data.text;
-        const input = document.createElement("input");
-        input.value = value;
-        input.style.display = "none";
-        document.body.appendChild(input);
-        input.dispatchEvent(new Event("input", { bubbles: true }));
-    }
-});
-</script>
-""", height=0)
+    st.experimental_rerun()
 
 
 
