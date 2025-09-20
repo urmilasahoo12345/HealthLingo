@@ -7,15 +7,13 @@ from deep_translator import GoogleTranslator
 import streamlit.components.v1 as components
 
 # ================================
-# Load Gemini API Key from Streamlit secrets
+# Load Gemini API Key
 # ================================
 gemini_key = os.getenv("GEMINI_API_KEY")
-
 if not gemini_key:
     st.error("⚠ GEMINI_API_KEY not found in Streamlit secrets.")
     st.stop()
 
-# Setup Gemini client
 client = genai.Client(api_key=gemini_key)
 PRIMARY_MODEL = "gemini-2.5-flash"
 BACKUP_MODEL = "gemini-1.5-flash"
@@ -35,7 +33,7 @@ def find_answer_from_faqs(user_query: str):
     return None
 
 # ================================
-# Gemini Query with Retry
+# Gemini Query
 # ================================
 def fetch_from_gemini(user_query: str, retries=3):
     prompt = f"""
@@ -80,57 +78,55 @@ def translate_to_language(text, lang_code):
 # ================================
 st.set_page_config(page_title="HealthLingo", page_icon="💬")
 
-# Navbar
+# ================================
+# Navbar (icons only)
+# ================================
 st.markdown("""
-    <style>
-        .navbar {
-            display: flex;
-            flex-wrap: wrap; 
-            align-items: center;
-            justify-content: space-between;
-            background: linear-gradient(90deg, #00b09b, #96c93d, #2193b0, #6dd5ed);
-            padding: 12px 20px;
-            border-radius: 10px;
-            box-shadow: 0px 3px 6px rgba(0,0,0,0.2);
-            position: sticky;
-            top: 0;
-            z-index: 1000;
-        }
-        .navbar img { height: 35px; margin-right: 10px; }
-        .navbar .logo-text { font-size: 20px; font-weight: bold; color: white; font-family: 'Segoe UI', sans-serif; }
-        .navbar-links { display: flex; flex-wrap: wrap; justify-content: center; margin-top: 8px; }
-        .navbar-links a { margin: 6px 8px; text-decoration: none; font-size: 15px; font-weight: 500; color: white; transition: 0.3s; }
-        .navbar-links a:hover { color: yellow; }
-        @media (max-width: 600px) {
-            .navbar { flex-direction: column; text-align: center; }
-            .navbar-links { flex-direction: column; margin-top: 10px; }
-        }
-    </style>
+<style>
+.navbar {
+    display: flex;
+    flex-wrap: wrap; 
+    align-items: center;
+    justify-content: space-between;
+    background: linear-gradient(90deg, #00b09b, #96c93d, #2193b0, #6dd5ed);
+    padding: 12px 20px;
+    border-radius: 10px;
+    box-shadow: 0px 3px 6px rgba(0,0,0,0.2);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+.navbar img { height: 35px; margin-right: 10px; }
+.navbar .logo-text { font-size: 20px; font-weight: bold; color: white; font-family: 'Segoe UI', sans-serif; }
 
-    <div class="navbar">
-    <!-- Left side: logo + name -->
+.navbar-links {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 15px;
+    margin-top: 0;
+}
+.navbar-links a img { height: 24px; }
+.navbar-links a:hover { color: black; }
+
+@media (max-width: 600px) {
+    .navbar { flex-direction: column; text-align: center; }
+    .navbar-links { flex-direction: row; margin-top: 10px; justify-content: center; gap: 10px; }
+}
+</style>
+
+<div class="navbar">
     <div style="display:flex; align-items:center;">
         <img src="https://img.icons8.com/color/96/medical-doctor.png" alt="HealthLingo Logo">
         <span class="logo-text">HealthLingo</span>
     </div>
-
-    <!-- Right side: icons as links -->
     <div class="navbar-links">
-        <a href="#" title="Home">
-            <img src="https://img.icons8.com/ios-filled/50/home.png" alt="Home">
-        </a>
-        <a href="#" title="FAQs">
-            <img src="https://img.icons8.com/ios-filled/50/help.png" alt="FAQs">
-        </a>
-        <a href="#" title="About">
-            <img src="https://img.icons8.com/ios-filled/50/info.png" alt="About">
-        </a>
-        <a href="#" title="Contact">
-            <img src="https://img.icons8.com/ios-filled/50/contacts.png" alt="Contact">
-        </a>
+        <a href="#" title="Home"><img src="https://img.icons8.com/ios-filled/50/home.png"></a>
+        <a href="#" title="FAQs"><img src="https://img.icons8.com/ios-filled/50/help.png"></a>
+        <a href="#" title="About"><img src="https://img.icons8.com/ios-filled/50/info.png"></a>
+        <a href="#" title="Contact"><img src="https://img.icons8.com/ios-filled/50/contacts.png"></a>
     </div>
 </div>
-
 """, unsafe_allow_html=True)
 
 # Heading
@@ -141,41 +137,18 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# Clear chat
+# ================================
+# Clear Chat
+# ================================
 if st.button("🗑 Clear Chat"):
     st.session_state.messages = []
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Input box
-user_input = st.chat_input("Ask me about any disease, symptoms, or prevention...")
-
-if user_input:
-    st.session_state.messages.append({"role": "user", "content": user_input})
-
-    # 1. Check FAQs
-    answer_en = find_answer_from_faqs(user_input)
-
-    # 2. If not found, use Gemini
-    if not answer_en:
-        answer_en = fetch_from_gemini(user_input)
-
-    # 3. Fallback if Gemini fails
-    if not answer_en or "Error" in answer_en:
-        answer_en = find_answer_from_faqs(user_input) or "Sorry, I cannot fetch this right now."
-
-    # 4. Translate to Hindi
-    answer_hi = translate_to_language(answer_en, "hi")
-
-    # Final bot reply
-    bot_reply = f"*English:* {answer_en}\n\n🌍 *Hindi:* {answer_hi}"
-    st.session_state.messages.append({"role": "bot", "content": bot_reply})
-
 # ================================
-# Display chat messages
+# Display Chat Messages
 # ================================
-latest_bot_reply = None
 for msg in st.session_state.messages:
     if msg["role"] == "user":
         st.markdown(
@@ -191,23 +164,46 @@ for msg in st.session_state.messages:
             f"box-shadow:0px 1px 3px rgba(0,0,0,0.3); white-space:pre-wrap;'>🤖 {msg['content']}</div></div>",
             unsafe_allow_html=True,
         )
-        latest_bot_reply = msg["content"]
 
 # ================================
-# Automatic TTS only for latest bot reply
+# Input Box
 # ================================
-if latest_bot_reply:
-    # Extract only English part to speak
-    english_text = latest_bot_reply.split("🌍")[0].replace("*English:*", "").strip()
+user_input = st.chat_input("Ask me about any disease, symptoms, or prevention...")
+
+if user_input:
+    st.session_state.messages.append({"role": "user", "content": user_input})
+
+    # --- Bot reply ---
+    answer_en = find_answer_from_faqs(user_input)
+    if not answer_en:
+        answer_en = fetch_from_gemini(user_input)
+    if not answer_en or "Error" in answer_en:
+        answer_en = find_answer_from_faqs(user_input) or "Sorry, I cannot fetch this right now."
+
+    answer_hi = translate_to_language(answer_en, "hi")
+    bot_reply = f"*English:* {answer_en}\n\n🌍 *Hindi:* {answer_hi}"
+
+    # --- Append and immediately display ---
+    st.session_state.messages.append({"role": "bot", "content": bot_reply})
+    for msg in [{"role": "bot", "content": bot_reply}]:
+        st.markdown(
+            f"<div style='display:flex; justify-content:flex-start; margin:5px;'>"
+            f"<div style='background-color:#000000; color:white; padding:10px; border-radius:15px; max-width:70%; "
+            f"box-shadow:0px 1px 3px rgba(0,0,0,0.3); white-space:pre-wrap;'>🤖 {msg['content']}</div></div>",
+            unsafe_allow_html=True,
+        )
+
+    # ================================
+    # TTS for latest reply
+    # ================================
     components.html(f"""
-    <script>
-    setTimeout(() => {{
-        var msg = new SpeechSynthesisUtterance(`{english_text.replace('`','')}`);
+        <script>
+        var msg = new SpeechSynthesisUtterance(`{answer_en.replace('`','')}`);
         window.speechSynthesis.cancel();
         window.speechSynthesis.speak(msg);
-    }}, 600);
-    </script>
+        </script>
     """, height=0)
+
 
 
 
