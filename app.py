@@ -131,72 +131,12 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# Language selector for voice input/output
-lang_code = st.selectbox(
-    "Select your language for voice input/output:",
-    options=["en", "hi", "es", "fr", "de", "zh", "ar"],
-    index=0,
-    help="Choose the language you will speak and want the response in."
-)
-
 # Clear chat
 if st.button("🗑 Clear Chat"):
     st.session_state.messages = []
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
-
-# Hidden text input to receive voice input from JS
-voice_text = st.text_input("Voice Input (hidden)", key="voice_input", label_visibility="collapsed")
-
-# ================================
-# Voice input button with JS
-# ================================
-components.html(f"""
-    <button id="start-btn" style="font-size:16px; padding:10px;">🎤 Start Voice Input</button>
-    <p id="result" style="font-weight:bold;"></p>
-    <script>
-    const startBtn = document.getElementById('start-btn');
-    const resultP = document.getElementById('result');
-    let recognition;
-    if ('webkitSpeechRecognition' in window) {{
-        recognition = new webkitSpeechRecognition();
-    }} else if ('SpeechRecognition' in window) {{
-        recognition = new SpeechRecognition();
-    }} else {{
-        resultP.innerText = "Speech Recognition not supported in this browser.";
-    }}
-
-    if (recognition) {{
-        recognition.lang = '{lang_code}';
-        recognition.continuous = false;
-        recognition.interimResults = false;
-
-        startBtn.onclick = () => {{
-            recognition.start();
-            startBtn.disabled = true;
-            startBtn.innerText = "🎙 Listening...";
-        }};
-
-        recognition.onresult = (event) => {{
-            const transcript = event.results[0][0].transcript;
-            resultP.innerText = "You said: " + transcript;
-            // Set hidden input value
-            const input = document.querySelector('input[name="voice_input"]');
-            input.value = transcript;
-            input.dispatchEvent(new Event('change'));
-            startBtn.disabled = false;
-            startBtn.innerText = "🎤 Start Voice Input";
-        }};
-
-        recognition.onerror = (event) => {{
-            resultP.innerText = "Error: " + event.error;
-            startBtn.disabled = false;
-            startBtn.innerText = "🎤 Start Voice Input";
-        }};
-    }}
-    </script>
-""", height=150)
 
 # ================================
 # Display chat messages
@@ -218,18 +158,9 @@ for msg in st.session_state.messages:
         )
 
 # ================================
-# Process input: voice or text
+# Input box
 # ================================
-user_input = None
-
-# Priority to voice input if available
-if voice_text and voice_text.strip() != "":
-    user_input = voice_text.strip()
-    # Clear voice input after reading
-    st.session_state.voice_input = ""
-else:
-    # Normal chat input
-    user_input = st.chat_input("Ask me about any disease, symptoms, or prevention...")
+user_input = st.chat_input("Ask me about any disease, symptoms, or prevention...")
 
 if user_input:
     st.session_state.messages.append({"role": "user", "content": user_input})
@@ -245,26 +176,25 @@ if user_input:
     if not answer_en or "Error" in answer_en:
         answer_en = find_answer_from_faqs(user_input) or "Sorry, I cannot fetch this right now."
 
-    # 4. Translate to user language
-    answer_user_lang = translate_to_language(answer_en, lang_code)
+    # 4. Translate to Hindi
+    answer_hi = translate_to_language(answer_en, "hi")
 
-    # Final bot reply with both English and user language
-    bot_reply = f"English: {answer_en}\n\n🌍 {lang_code.upper()}: {answer_user_lang}"
+    # Final bot reply
+    bot_reply = f"English: {answer_en}\n\n🌍 Hindi: {answer_hi}"
     st.session_state.messages.append({"role": "bot", "content": bot_reply})
 
     # ================================
-    # Automatic TTS in user language for latest bot reply
+    # Automatic TTS ONLY for latest bot reply
     # ================================
     components.html(f"""
         <script>
-        var msg = new SpeechSynthesisUtterance({answer_user_lang.replace('','').replace('\\','\\\\').replace('\n',' ')}`);
-        msg.lang = '{lang_code}';
+        var msg = new SpeechSynthesisUtterance({answer_en.replace('','')}`);
         window.speechSynthesis.cancel(); // stop any previous speech
         window.speechSynthesis.speak(msg);
         </script>
     """, height=0)
 
-    st.experimental_rerun()
+    st.rerun()
 
 
 
