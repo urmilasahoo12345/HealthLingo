@@ -10,10 +10,12 @@ import streamlit.components.v1 as components
 # Load Gemini API Key
 # ================================
 gemini_key = os.getenv("GEMINI_API_KEY")
+
 if not gemini_key:
     st.error("⚠ GEMINI_API_KEY not found in Streamlit secrets.")
     st.stop()
 
+# Setup Gemini client
 client = genai.Client(api_key=gemini_key)
 PRIMARY_MODEL = "gemini-2.5-flash"
 BACKUP_MODEL = "gemini-1.5-flash"
@@ -24,6 +26,7 @@ BACKUP_MODEL = "gemini-1.5-flash"
 with open("faqs.json", "r", encoding="utf-8") as f:
     faqs = json.load(f)
 
+
 def find_answer_from_faqs(user_query: str):
     user_query = user_query.lower()
     for disease, entry in faqs.items():
@@ -32,8 +35,9 @@ def find_answer_from_faqs(user_query: str):
                 return entry["info"]
     return None
 
+
 # ================================
-# Gemini Query
+# Gemini Query with Retry
 # ================================
 def fetch_from_gemini(user_query: str, retries=3):
     prompt = f"""
@@ -47,7 +51,7 @@ If it's not health-related, politely say so.
         try:
             response = client.models.generate_content(
                 model=PRIMARY_MODEL,
-                contents=prompt
+                contents=prompt,
             )
             return response.text.strip()
         except Exception as e:
@@ -57,12 +61,13 @@ If it's not health-related, politely say so.
             try:
                 response = client.models.generate_content(
                     model=BACKUP_MODEL,
-                    contents=prompt
+                    contents=prompt,
                 )
                 return response.text.strip()
             except Exception as e2:
                 return f"⚠ Error fetching from Gemini: {str(e2)}"
     return "⚠ Could not fetch response from Gemini."
+
 
 # ================================
 # Translator
@@ -73,135 +78,126 @@ def translate_to_language(text, lang_code):
     except:
         return text
 
-# ================================
-# Streamlit UI
-# ================================
-st.set_page_config(page_title="HealthLingo", page_icon="💬")
 
 # ================================
-# Navbar with Hamburger Menu
+# Streamlit Page Config
 # ================================
-st.markdown("""
-<style>
-/* Navbar styling */
-.navbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    background: linear-gradient(90deg, #00b09b, #96c93d, #2193b0, #6dd5ed);
-    padding: 12px 20px;
-    border-radius: 10px;
-    box-shadow: 0px 3px 6px rgba(0,0,0,0.2);
-    position: sticky;
-    top: 0;
-    z-index: 1000;
-}
+st.set_page_config(page_title="HealthLingo", page_icon="💬", layout="wide")
 
-/* Logo */
-.navbar img { height: 35px; margin-right: 10px; }
-.logo-text { font-size: 20px; font-weight: bold; color: white; font-family: 'Segoe UI', sans-serif; }
+# ================================
+# Navbar with dropdown menu
+# ================================
+st.markdown(
+    """
+    <style>
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: linear-gradient(90deg, #00b09b, #96c93d, #2193b0, #6dd5ed);
+            padding: 12px 20px;
+            border-radius: 10px;
+            box-shadow: 0px 3px 6px rgba(0,0,0,0.2);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        .navbar-left {
+            display: flex;
+            align-items: center;
+        }
+        .navbar-left img { height: 35px; margin-right: 10px; }
+        .navbar-left .logo-text {
+            font-size: 20px;
+            font-weight: bold;
+            color: white;
+            font-family: 'Segoe UI', sans-serif;
+        }
+        .menu {
+            position: relative;
+            display: inline-block;
+        }
+        .menu-content {
+            display: none;
+            position: absolute;
+            right: 0;
+            background-color: white;
+            min-width: 140px;
+            border-radius: 8px;
+            box-shadow: 0px 8px 16px rgba(0,0,0,0.2);
+            padding: 10px;
+            z-index: 1001;
+        }
+        .menu-content a {
+            color: black;
+            text-decoration: none;
+            display: block;
+            padding: 8px;
+        }
+        .menu-content a:hover {
+            background-color: #f1f1f1;
+        }
+        .menu:hover .menu-content {
+            display: block;
+        }
+    </style>
 
-/* Hamburger icon */
-.menu-icon {
-    font-size: 26px;
-    cursor: pointer;
-    color: white;
-    transition: transform 0.3s ease;
-}
-.menu-icon:hover { transform: rotate(90deg); }
-
-/* Dropdown menu */
-.dropdown {
-    display: none;
-    position: absolute;
-    right: 20px;
-    top: 60px;
-    background: white;
-    border-radius: 8px;
-    box-shadow: 0px 4px 10px rgba(0,0,0,0.2);
-    padding: 10px;
-}
-.dropdown a {
-    display: flex;
-    align-items: center;
-    padding: 8px;
-    text-decoration: none;
-    color: black;
-    transition: background 0.3s;
-}
-.dropdown a:hover { background: #f0f0f0; border-radius: 6px; }
-
-/* Chat area with background */
-.chat-container {
-    background: url("https://www.istudiotech.in/wp-content/uploads/2023/03/ai-in-hospitals.png") no-repeat center center;
-    background-size: cover;
-    border-radius: 15px;
-    padding: 15px;
-    position: relative;
-    overflow: hidden;
-}
-.chat-container::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: rgba(255,255,255,0.7); /* white overlay for opacity effect */
-    z-index: 0;
-}
-.chat-message {
-    position: relative;
-    z-index: 1; /* make sure messages are above the overlay */
-}
-
-/* Chat bubble animation */
-.chat-bubble {
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-.chat-bubble:hover {
-    transform: scale(1.02);
-    box-shadow: 0px 4px 10px rgba(0,0,0,0.4);
-}
-</style>
-
-<div class="navbar">
-    <div style="display:flex; align-items:center;">
-        <img src="https://img.icons8.com/color/96/medical-doctor.png" alt="HealthLingo Logo">
-        <span class="logo-text">HealthLingo</span>
-    </div>
-    <div>
-        <span class="menu-icon" onclick="toggleMenu()">☰</span>
-        <div id="menuDropdown" class="dropdown">
-            <a href="#"><img src="https://img.icons8.com/ios-filled/24/home.png"> Home</a>
-            <a href="#"><img src="https://img.icons8.com/ios-filled/24/help.png"> FAQs</a>
-            <a href="#"><img src="https://img.icons8.com/ios-filled/24/info.png"> About</a>
-            <a href="#"><img src="https://img.icons8.com/ios-filled/24/contacts.png"> Contact</a>
+    <div class="navbar">
+        <div class="navbar-left">
+            <img src="https://img.icons8.com/color/96/medical-doctor.png" alt="HealthLingo Logo">
+            <span class="logo-text">HealthLingo</span>
+        </div>
+        <div class="menu">
+            <img src="https://img.icons8.com/ios-filled/50/menu--v1.png" alt="Menu" style="height:30px; cursor:pointer;">
+            <div class="menu-content">
+                <a href="#" title="Home">🏠 Home</a>
+                <a href="#" title="FAQs">❓ FAQs</a>
+                <a href="#" title="About">ℹ️ About</a>
+                <a href="#" title="Contact">📞 Contact</a>
+            </div>
         </div>
     </div>
-</div>
+""",
+    unsafe_allow_html=True,
+)
 
-<script>
-function toggleMenu() {
-    var menu = document.getElementById("menuDropdown");
-    if (menu.style.display === "block") {
-        menu.style.display = "none";
-    } else {
-        menu.style.display = "block";
-    }
-}
-</script>
-""", unsafe_allow_html=True)
-
-# ================================
 # Heading
-# ================================
 st.markdown(
     "<h2 style='text-align:center; margin-top:20px;'>"
     "<span style='color:green;'>Health</span>"
     "<span style='color:blue;'>Lingo</span> – Your AI Health Assistant</h2>",
-    unsafe_allow_html=True
+    unsafe_allow_html=True,
 )
 
 # ================================
-# Clear Chat
+# Background for chats
+# ================================
+st.markdown(
+    """
+    <style>
+        .chat-container {
+            background: url('https://www.istudiotech.in/wp-content/uploads/2023/03/ai-in-hospitals.png') no-repeat center center fixed;
+            background-size: cover;
+            position: absolute;
+            top: 120px;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            opacity: 0.15;
+            z-index: -1;
+        }
+        .chat-overlay {
+            position: relative;
+            z-index: 1;
+        }
+    </style>
+    <div class="chat-container"></div>
+""",
+    unsafe_allow_html=True,
+)
+
+# ================================
+# Clear Chat Button
 # ================================
 if st.button("🗑 Clear Chat"):
     st.session_state.messages = []
@@ -210,64 +206,66 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 
 # ================================
-# Container for chat messages with background
+# Display Chat Messages
 # ================================
-chat_container = st.container()
-with chat_container:
-    st.markdown('<div class="chat-container">', unsafe_allow_html=True)
+st.markdown('<div class="chat-overlay">', unsafe_allow_html=True)
 
-    for msg in st.session_state.messages:
-        if msg["role"] == "user":
-            st.markdown(
-                f"<div class='chat-message' style='display:flex; justify-content:flex-end; margin:5px;'>"
-                f"<div class='chat-bubble' style='background-color:#003366; color:white; padding:10px; border-radius:15px; max-width:70%; white-space:pre-wrap;'>🧑 {msg['content']}</div></div>",
-                unsafe_allow_html=True,
-            )
-        else:
-            st.markdown(
-                f"<div class='chat-message' style='display:flex; justify-content:flex-start; margin:5px;'>"
-                f"<div class='chat-bubble' style='background-color:#000000; color:white; padding:10px; border-radius:15px; max-width:70%; white-space:pre-wrap;'>🤖 {msg['content']}</div></div>",
-                unsafe_allow_html=True,
-            )
+for msg in st.session_state.messages:
+    if msg["role"] == "user":
+        st.markdown(
+            f"<div style='display:flex; justify-content:flex-end; margin:5px; animation: fadeIn 0.5s;'>"
+            f"<div style='background-color:#003366; color:white; padding:10px; border-radius:15px; max-width:70%; "
+            f"box-shadow:0px 1px 3px rgba(0,0,0,0.3); white-space:pre-wrap;'>🧑 {msg['content']}</div></div>",
+            unsafe_allow_html=True,
+        )
+    else:
+        st.markdown(
+            f"<div style='display:flex; justify-content:flex-start; margin:5px; animation: fadeIn 0.5s;'>"
+            f"<div style='background-color:#000000; color:white; padding:10px; border-radius:15px; max-width:70%; "
+            f"box-shadow:0px 1px 3px rgba(0,0,0,0.3); white-space:pre-wrap;'>🤖 {msg['content']}</div></div>",
+            unsafe_allow_html=True,
+        )
 
-    st.markdown('</div>', unsafe_allow_html=True)
+st.markdown("</div>", unsafe_allow_html=True)
 
 # ================================
-# Input Box
+# Input box
 # ================================
 user_input = st.chat_input("Ask me about any disease, symptoms, or prevention...")
 
 if user_input:
     st.session_state.messages.append({"role": "user", "content": user_input})
-    with chat_container:
-        st.markdown('<div class="chat-container">', unsafe_allow_html=True)
-        st.markdown(
-            f"<div class='chat-message' style='display:flex; justify-content:flex-end; margin:5px;'>"
-            f"<div class='chat-bubble' style='background-color:#003366; color:white; padding:10px; border-radius:15px; max-width:70%; white-space:pre-wrap;'>🧑 {user_input}</div></div>",
-            unsafe_allow_html=True,
-        )
-        st.markdown('</div>', unsafe_allow_html=True)
 
-    answer_en = find_answer_from_faqs(user_input) or fetch_from_gemini(user_input)
+    # 1. Check FAQs
+    answer_en = find_answer_from_faqs(user_input)
+
+    # 2. If not found, use Gemini
+    if not answer_en:
+        answer_en = fetch_from_gemini(user_input)
+
+    # 3. Fallback if Gemini fails
     if not answer_en or "Error" in answer_en:
-        answer_en = "Sorry, I cannot fetch this right now."
+        answer_en = (
+            find_answer_from_faqs(user_input) or "Sorry, I cannot fetch this right now."
+        )
+
+    # 4. Translate to Hindi
     answer_hi = translate_to_language(answer_en, "hi")
+
+    # Final bot reply
     bot_reply = f"*English:* {answer_en}\n\n🌍 *Hindi:* {answer_hi}"
     st.session_state.messages.append({"role": "bot", "content": bot_reply})
 
-    with chat_container:
-        st.markdown('<div class="chat-container">', unsafe_allow_html=True)
-        st.markdown(
-            f"<div class='chat-message' style='display:flex; justify-content:flex-start; margin:5px;'>"
-            f"<div class='chat-bubble' style='background-color:#000000; color:white; padding:10px; border-radius:15px; max-width:70%; white-space:pre-wrap;'>🤖 {bot_reply}</div></div>",
-            unsafe_allow_html=True,
-        )
-        st.markdown('</div>', unsafe_allow_html=True)
-
-    components.html(f"""
+    # ================================
+    # Automatic TTS ONLY for latest bot reply
+    # ================================
+    components.html(
+        f"""
         <script>
         var msg = new SpeechSynthesisUtterance(`{answer_en.replace('`','')}`);
-        window.speechSynthesis.cancel();
+        window.speechSynthesis.cancel(); 
         window.speechSynthesis.speak(msg);
         </script>
-    """, height=0)
+    """,
+        height=0,
+    )
