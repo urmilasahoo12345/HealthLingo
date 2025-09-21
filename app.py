@@ -109,8 +109,8 @@ st.markdown(
         .navbar-left img { height: 35px; margin-right: 10px; }
         .navbar-left .logo-text {
             font-size: 20px;
-            font-weight: bold;
-            color: white;
+            font-weight: bold; 
+            color: blue;
             font-family: 'Segoe UI', sans-serif;
         }
         .menu {
@@ -164,8 +164,7 @@ st.markdown(
 # Heading
 st.markdown(
     "<h2 style='text-align:center; margin-top:20px;'>"
-    "<span style='color:green;'>Health</span>"
-    "<span style='color:blue;'>Lingo</span> – Your AI Health Assistant</h2>",
+    " Your AI Health Assistant</h2>",
     unsafe_allow_html=True,
 )
 
