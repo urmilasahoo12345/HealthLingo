@@ -131,6 +131,27 @@ st.markdown("""
 }
 .dropdown a:hover { background: #f0f0f0; border-radius: 6px; }
 
+/* Chat area with background */
+.chat-container {
+    background: url("https://www.istudiotech.in/wp-content/uploads/2023/03/ai-in-hospitals.png") no-repeat center center;
+    background-size: cover;
+    border-radius: 15px;
+    padding: 15px;
+    position: relative;
+    overflow: hidden;
+}
+.chat-container::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: rgba(255,255,255,0.7); /* white overlay for opacity effect */
+    z-index: 0;
+}
+.chat-message {
+    position: relative;
+    z-index: 1; /* make sure messages are above the overlay */
+}
+
 /* Chat bubble animation */
 .chat-bubble {
     transition: transform 0.2s ease, box-shadow 0.2s ease;
@@ -189,27 +210,27 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 
 # ================================
-# Container for chat messages
+# Container for chat messages with background
 # ================================
 chat_container = st.container()
-
-# Display previous chat messages
 with chat_container:
+    st.markdown('<div class="chat-container">', unsafe_allow_html=True)
+
     for msg in st.session_state.messages:
         if msg["role"] == "user":
             st.markdown(
-                f"<div style='display:flex; justify-content:flex-end; margin:5px;'>"
-                f"<div class='chat-bubble' style='background-color:#003366; color:white; padding:10px; border-radius:15px; max-width:70%; "
-                f"white-space:pre-wrap;'>🧑 {msg['content']}</div></div>",
+                f"<div class='chat-message' style='display:flex; justify-content:flex-end; margin:5px;'>"
+                f"<div class='chat-bubble' style='background-color:#003366; color:white; padding:10px; border-radius:15px; max-width:70%; white-space:pre-wrap;'>🧑 {msg['content']}</div></div>",
                 unsafe_allow_html=True,
             )
         else:
             st.markdown(
-                f"<div style='display:flex; justify-content:flex-start; margin:5px;'>"
-                f"<div class='chat-bubble' style='background-color:#000000; color:white; padding:10px; border-radius:15px; max-width:70%; "
-                f"white-space:pre-wrap;'>🤖 {msg['content']}</div></div>",
+                f"<div class='chat-message' style='display:flex; justify-content:flex-start; margin:5px;'>"
+                f"<div class='chat-bubble' style='background-color:#000000; color:white; padding:10px; border-radius:15px; max-width:70%; white-space:pre-wrap;'>🤖 {msg['content']}</div></div>",
                 unsafe_allow_html=True,
             )
+
+    st.markdown('</div>', unsafe_allow_html=True)
 
 # ================================
 # Input Box
@@ -219,12 +240,13 @@ user_input = st.chat_input("Ask me about any disease, symptoms, or prevention...
 if user_input:
     st.session_state.messages.append({"role": "user", "content": user_input})
     with chat_container:
+        st.markdown('<div class="chat-container">', unsafe_allow_html=True)
         st.markdown(
-            f"<div style='display:flex; justify-content:flex-end; margin:5px;'>"
-            f"<div class='chat-bubble' style='background-color:#003366; color:white; padding:10px; border-radius:15px; max-width:70%; "
-            f"white-space:pre-wrap;'>🧑 {user_input}</div></div>",
+            f"<div class='chat-message' style='display:flex; justify-content:flex-end; margin:5px;'>"
+            f"<div class='chat-bubble' style='background-color:#003366; color:white; padding:10px; border-radius:15px; max-width:70%; white-space:pre-wrap;'>🧑 {user_input}</div></div>",
             unsafe_allow_html=True,
         )
+        st.markdown('</div>', unsafe_allow_html=True)
 
     answer_en = find_answer_from_faqs(user_input) or fetch_from_gemini(user_input)
     if not answer_en or "Error" in answer_en:
@@ -234,12 +256,13 @@ if user_input:
     st.session_state.messages.append({"role": "bot", "content": bot_reply})
 
     with chat_container:
+        st.markdown('<div class="chat-container">', unsafe_allow_html=True)
         st.markdown(
-            f"<div style='display:flex; justify-content:flex-start; margin:5px;'>"
-            f"<div class='chat-bubble' style='background-color:#000000; color:white; padding:10px; border-radius:15px; max-width:70%; "
-            f"white-space:pre-wrap;'>🤖 {bot_reply}</div></div>",
+            f"<div class='chat-message' style='display:flex; justify-content:flex-start; margin:5px;'>"
+            f"<div class='chat-bubble' style='background-color:#000000; color:white; padding:10px; border-radius:15px; max-width:70%; white-space:pre-wrap;'>🤖 {bot_reply}</div></div>",
             unsafe_allow_html=True,
         )
+        st.markdown('</div>', unsafe_allow_html=True)
 
     components.html(f"""
         <script>
