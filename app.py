@@ -216,12 +216,12 @@ st.markdown(
 )
 
 st.markdown(
-    "<h2 style='text-align:center; margin-top:18px;'>Your AI Health Assistant</h2>",
+    "<h2 style='text-align:center; margin-top:14px;'>Your AI Health Assistant...</h2>",
     unsafe_allow_html=True,
 )
 
 # Clear chat
-if st.button("🗑 Clear Chat"):
+if st.button("🗑"):
     st.session_state.messages = []
 
 if "messages" not in st.session_state:
