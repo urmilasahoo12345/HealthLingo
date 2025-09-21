@@ -206,6 +206,37 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 
 # ================================
+# Input box
+# ================================
+user_input = st.chat_input("Ask me about any disease, symptoms, or prevention...")
+
+bot_reply_text = None  # store latest bot reply (English only for TTS)
+
+if user_input:
+    st.session_state.messages.append({"role": "user", "content": user_input})
+
+    # 1. Check FAQs
+    answer_en = find_answer_from_faqs(user_input)
+
+    # 2. If not found, use Gemini
+    if not answer_en:
+        answer_en = fetch_from_gemini(user_input)
+
+    # 3. Fallback if Gemini fails
+    if not answer_en or "Error" in answer_en:
+        answer_en = (
+            find_answer_from_faqs(user_input) or "Sorry, I cannot fetch this right now."
+        )
+
+    # 4. Translate to Hindi
+    answer_hi = translate_to_language(answer_en, "hi")
+
+    # Final bot reply
+    bot_reply_text = answer_en  # save for TTS
+    bot_reply = f"*English:* {answer_en}\n\n🌍 *Hindi:* {answer_hi}"
+    st.session_state.messages.append({"role": "bot", "content": bot_reply})
+
+# ================================
 # Display Chat Messages
 # ================================
 st.markdown('<div class="chat-overlay">', unsafe_allow_html=True)
@@ -229,43 +260,17 @@ for msg in st.session_state.messages:
 st.markdown("</div>", unsafe_allow_html=True)
 
 # ================================
-# Input box
+# Automatic TTS AFTER messages are displayed
 # ================================
-user_input = st.chat_input("Ask me about any disease, symptoms, or prevention...")
-
-if user_input:
-    st.session_state.messages.append({"role": "user", "content": user_input})
-
-    # 1. Check FAQs
-    answer_en = find_answer_from_faqs(user_input)
-
-    # 2. If not found, use Gemini
-    if not answer_en:
-        answer_en = fetch_from_gemini(user_input)
-
-    # 3. Fallback if Gemini fails
-    if not answer_en or "Error" in answer_en:
-        answer_en = (
-            find_answer_from_faqs(user_input) or "Sorry, I cannot fetch this right now."
-        )
-
-    # 4. Translate to Hindi
-    answer_hi = translate_to_language(answer_en, "hi")
-
-    # Final bot reply
-    bot_reply = f"*English:* {answer_en}\n\n🌍 *Hindi:* {answer_hi}"
-    st.session_state.messages.append({"role": "bot", "content": bot_reply})
-
-    # ================================
-    # Automatic TTS ONLY for latest bot reply
-    # ================================
+if bot_reply_text:
     components.html(
         f"""
         <script>
-        var msg = new SpeechSynthesisUtterance(`{answer_en.replace('`','')}`);
+        var msg = new SpeechSynthesisUtterance(`{bot_reply_text.replace('`','')}`);
         window.speechSynthesis.cancel(); 
         window.speechSynthesis.speak(msg);
         </script>
     """,
         height=0,
     )
+
