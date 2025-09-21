@@ -70,13 +70,21 @@ If it's not health-related, politely say so.
 
 
 # ================================
-# Translator
+# Translator with auto language detection
 # ================================
-def translate_to_language(text, lang_code):
+def translate_auto(text, target_lang=None):
     try:
-        return GoogleTranslator(source="en", target=lang_code).translate(text)
+        translator = GoogleTranslator(source="auto", target=target_lang)
+        return translator.translate(text)
     except:
         return text
+
+
+def detect_language(text):
+    try:
+        return GoogleTranslator(source="auto", target="en").source
+    except:
+        return "en"
 
 
 # ================================
@@ -84,9 +92,7 @@ def translate_to_language(text, lang_code):
 # ================================
 st.set_page_config(page_title="HealthLingo", page_icon="💬", layout="wide")
 
-# ================================
-# Navbar with dropdown menu
-# ================================
+# Navbar
 st.markdown(
     """
     <style>
@@ -161,10 +167,8 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# Heading
 st.markdown(
-    "<h2 style='text-align:center; margin-top:20px;'>"
-    " Your AI Health Assistant</h2>",
+    "<h2 style='text-align:center; margin-top:20px;'>Your AI Health Assistant</h2>",
     unsafe_allow_html=True,
 )
 
@@ -182,59 +186,63 @@ if "messages" not in st.session_state:
 # ================================
 user_input = st.chat_input("Ask me about any disease, symptoms, or prevention...")
 
-bot_reply_text = None  # store latest bot reply (English only for TTS)
-
+bot_reply_text = None
 if user_input:
     st.session_state.messages.append({"role": "user", "content": user_input})
 
-    # 1. Check FAQs
+    # Detect language of user input
+    user_lang = detect_language(user_input)
+
+    # Check FAQs first
     answer_en = find_answer_from_faqs(user_input)
 
-    # 2. If not found, use Gemini
+    # If not found, use Gemini
     if not answer_en:
         answer_en = fetch_from_gemini(user_input)
 
-    # 3. Fallback if Gemini fails
+    # Fallback
     if not answer_en or "Error" in answer_en:
-        answer_en = (
-            find_answer_from_faqs(user_input) or "Sorry, I cannot fetch this right now."
-        )
+        answer_en = "Sorry, I cannot fetch this right now."
 
-    # 4. Translate to Hindi
-    answer_hi = translate_to_language(answer_en, "hi")
+    # Translate to user language if not English
+    answer_final = (
+        answer_en
+        if user_lang == "en"
+        else translate_auto(answer_en, user_lang)
+    )
 
-    # Final bot reply
-    bot_reply_text = answer_en  # save for TTS
-    bot_reply = f"*English:* {answer_en}\n\n🌍 *Hindi:* {answer_hi}"
-    st.session_state.messages.append({"role": "bot", "content": bot_reply})
+    # Save bot reply
+    bot_reply_text = answer_final
+    st.session_state.messages.append({"role": "bot", "content": answer_final})
 
 # ================================
-# Display Chat Messages
+# Display Chat
 # ================================
 for msg in st.session_state.messages:
     if msg["role"] == "user":
         st.markdown(
-            f"<div style='display:flex; justify-content:flex-end; margin:5px; animation: fadeIn 0.5s;'>"
-            f"<div style='background-color:#003366; color:white; padding:10px; border-radius:15px; max-width:70%; "
-            f"box-shadow:0px 1px 3px rgba(0,0,0,0.3); white-space:pre-wrap;'>🧑 {msg['content']}</div></div>",
+            f"<div style='display:flex; justify-content:flex-end; margin:5px;'>"
+            f"<div style='background-color:#003366; color:white; padding:10px; border-radius:15px; "
+            f"max-width:70%; box-shadow:0px 1px 3px rgba(0,0,0,0.3);'>🧑 {msg['content']}</div></div>",
             unsafe_allow_html=True,
         )
     else:
         st.markdown(
-            f"<div style='display:flex; justify-content:flex-start; margin:5px; animation: fadeIn 0.5s;'>"
-            f"<div style='background-color:#000000; color:white; padding:10px; border-radius:15px; max-width:70%; "
-            f"box-shadow:0px 1px 3px rgba(0,0,0,0.3); white-space:pre-wrap;'>🤖 {msg['content']}</div></div>",
+            f"<div style='display:flex; justify-content:flex-start; margin:5px;'>"
+            f"<div style='background-color:#000000; color:white; padding:10px; border-radius:15px; "
+            f"max-width:70%; box-shadow:0px 1px 3px rgba(0,0,0,0.3);'>🤖 {msg['content']}</div></div>",
             unsafe_allow_html=True,
         )
 
 # ================================
-# Automatic TTS AFTER messages are displayed
+# Auto TTS in user's language
 # ================================
 if bot_reply_text:
     components.html(
         f"""
         <script>
         var msg = new SpeechSynthesisUtterance(`{bot_reply_text.replace('`','')}`);
+        msg.lang = "{user_lang}";
         window.speechSynthesis.cancel(); 
         window.speechSynthesis.speak(msg);
         </script>
