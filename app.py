@@ -170,33 +170,6 @@ st.markdown(
 )
 
 # ================================
-# Background for chats
-# ================================
-st.markdown(
-    """
-    <style>
-        .chat-container {
-            background: url('https://www.istudiotech.in/wp-content/uploads/2023/03/ai-in-hospitals.png') no-repeat center center fixed;
-            background-size: cover;
-            position: absolute;
-            top: 120px;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            opacity: 0.15;
-            z-index: -1;
-        }
-        .chat-overlay {
-            position: relative;
-            z-index: 1;
-        }
-    </style>
-    <div class="chat-container"></div>
-""",
-    unsafe_allow_html=True,
-)
-
-# ================================
 # Clear Chat Button
 # ================================
 if st.button("🗑 Clear Chat"):
@@ -239,8 +212,6 @@ if user_input:
 # ================================
 # Display Chat Messages
 # ================================
-st.markdown('<div class="chat-overlay">', unsafe_allow_html=True)
-
 for msg in st.session_state.messages:
     if msg["role"] == "user":
         st.markdown(
@@ -257,8 +228,6 @@ for msg in st.session_state.messages:
             unsafe_allow_html=True,
         )
 
-st.markdown("</div>", unsafe_allow_html=True)
-
 # ================================
 # Automatic TTS AFTER messages are displayed
 # ================================
@@ -273,4 +242,3 @@ if bot_reply_text:
     """,
         height=0,
     )
-
