@@ -79,13 +79,13 @@ def translate_to_language(text, lang_code):
 st.set_page_config(page_title="HealthLingo", page_icon="💬")
 
 # ================================
-# Navbar (icons only)
+# Navbar with Hamburger Menu
 # ================================
 st.markdown("""
 <style>
+/* Navbar styling */
 .navbar {
     display: flex;
-    flex-wrap: wrap; 
     align-items: center;
     justify-content: space-between;
     background: linear-gradient(90deg, #00b09b, #96c93d, #2193b0, #6dd5ed);
@@ -96,22 +96,48 @@ st.markdown("""
     top: 0;
     z-index: 1000;
 }
+
+/* Logo */
 .navbar img { height: 35px; margin-right: 10px; }
-.navbar .logo-text { font-size: 20px; font-weight: bold; color: white; font-family: 'Segoe UI', sans-serif; }
+.logo-text { font-size: 20px; font-weight: bold; color: white; font-family: 'Segoe UI', sans-serif; }
 
-.navbar-links {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    gap: 15px;
-    margin-top: 0;
+/* Hamburger icon */
+.menu-icon {
+    font-size: 26px;
+    cursor: pointer;
+    color: white;
+    transition: transform 0.3s ease;
 }
-.navbar-links a img { height: 24px; }
-.navbar-links a:hover { color: black; }
+.menu-icon:hover { transform: rotate(90deg); }
 
-@media (max-width: 600px) {
-    .navbar { flex-direction: column; text-align: center; }
-    .navbar-links { flex-direction: row; margin-top: 10px; justify-content: center; gap: 10px; }
+/* Dropdown menu */
+.dropdown {
+    display: none;
+    position: absolute;
+    right: 20px;
+    top: 60px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0px 4px 10px rgba(0,0,0,0.2);
+    padding: 10px;
+}
+.dropdown a {
+    display: flex;
+    align-items: center;
+    padding: 8px;
+    text-decoration: none;
+    color: black;
+    transition: background 0.3s;
+}
+.dropdown a:hover { background: #f0f0f0; border-radius: 6px; }
+
+/* Chat bubble animation */
+.chat-bubble {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.chat-bubble:hover {
+    transform: scale(1.02);
+    box-shadow: 0px 4px 10px rgba(0,0,0,0.4);
 }
 </style>
 
@@ -120,16 +146,32 @@ st.markdown("""
         <img src="https://img.icons8.com/color/96/medical-doctor.png" alt="HealthLingo Logo">
         <span class="logo-text">HealthLingo</span>
     </div>
-    <div class="navbar-links">
-        <a href="#" title="Home"><img src="https://img.icons8.com/ios-filled/50/home.png"></a>
-        <a href="#" title="FAQs"><img src="https://img.icons8.com/ios-filled/50/help.png"></a>
-        <a href="#" title="About"><img src="https://img.icons8.com/ios-filled/50/info.png"></a>
-        <a href="#" title="Contact"><img src="https://img.icons8.com/ios-filled/50/contacts.png"></a>
+    <div>
+        <span class="menu-icon" onclick="toggleMenu()">☰</span>
+        <div id="menuDropdown" class="dropdown">
+            <a href="#"><img src="https://img.icons8.com/ios-filled/24/home.png"> Home</a>
+            <a href="#"><img src="https://img.icons8.com/ios-filled/24/help.png"> FAQs</a>
+            <a href="#"><img src="https://img.icons8.com/ios-filled/24/info.png"> About</a>
+            <a href="#"><img src="https://img.icons8.com/ios-filled/24/contacts.png"> Contact</a>
+        </div>
     </div>
 </div>
+
+<script>
+function toggleMenu() {
+    var menu = document.getElementById("menuDropdown");
+    if (menu.style.display === "block") {
+        menu.style.display = "none";
+    } else {
+        menu.style.display = "block";
+    }
+}
+</script>
 """, unsafe_allow_html=True)
 
+# ================================
 # Heading
+# ================================
 st.markdown(
     "<h2 style='text-align:center; margin-top:20px;'>"
     "<span style='color:green;'>Health</span>"
@@ -157,15 +199,15 @@ with chat_container:
         if msg["role"] == "user":
             st.markdown(
                 f"<div style='display:flex; justify-content:flex-end; margin:5px;'>"
-                f"<div style='background-color:#003366; color:white; padding:10px; border-radius:15px; max-width:70%; "
-                f"box-shadow:0px 1px 3px rgba(0,0,0,0.3); white-space:pre-wrap;'>🧑 {msg['content']}</div></div>",
+                f"<div class='chat-bubble' style='background-color:#003366; color:white; padding:10px; border-radius:15px; max-width:70%; "
+                f"white-space:pre-wrap;'>🧑 {msg['content']}</div></div>",
                 unsafe_allow_html=True,
             )
         else:
             st.markdown(
                 f"<div style='display:flex; justify-content:flex-start; margin:5px;'>"
-                f"<div style='background-color:#000000; color:white; padding:10px; border-radius:15px; max-width:70%; "
-                f"box-shadow:0px 1px 3px rgba(0,0,0,0.3); white-space:pre-wrap;'>🤖 {msg['content']}</div></div>",
+                f"<div class='chat-bubble' style='background-color:#000000; color:white; padding:10px; border-radius:15px; max-width:70%; "
+                f"white-space:pre-wrap;'>🤖 {msg['content']}</div></div>",
                 unsafe_allow_html=True,
             )
 
@@ -175,38 +217,30 @@ with chat_container:
 user_input = st.chat_input("Ask me about any disease, symptoms, or prevention...")
 
 if user_input:
-    # --- Append user message immediately ---
     st.session_state.messages.append({"role": "user", "content": user_input})
     with chat_container:
         st.markdown(
             f"<div style='display:flex; justify-content:flex-end; margin:5px;'>"
-            f"<div style='background-color:#003366; color:white; padding:10px; border-radius:15px; max-width:70%; "
-            f"box-shadow:0px 1px 3px rgba(0,0,0,0.3); white-space:pre-wrap;'>🧑 {user_input}</div></div>",
+            f"<div class='chat-bubble' style='background-color:#003366; color:white; padding:10px; border-radius:15px; max-width:70%; "
+            f"white-space:pre-wrap;'>🧑 {user_input}</div></div>",
             unsafe_allow_html=True,
         )
 
-    # --- Bot reply ---
-    answer_en = find_answer_from_faqs(user_input)
-    if not answer_en:
-        answer_en = fetch_from_gemini(user_input)
+    answer_en = find_answer_from_faqs(user_input) or fetch_from_gemini(user_input)
     if not answer_en or "Error" in answer_en:
-        answer_en = find_answer_from_faqs(user_input) or "Sorry, I cannot fetch this right now."
+        answer_en = "Sorry, I cannot fetch this right now."
     answer_hi = translate_to_language(answer_en, "hi")
     bot_reply = f"*English:* {answer_en}\n\n🌍 *Hindi:* {answer_hi}"
     st.session_state.messages.append({"role": "bot", "content": bot_reply})
 
-    # --- Display bot reply immediately ---
     with chat_container:
         st.markdown(
             f"<div style='display:flex; justify-content:flex-start; margin:5px;'>"
-            f"<div style='background-color:#000000; color:white; padding:10px; border-radius:15px; max-width:70%; "
-            f"box-shadow:0px 1px 3px rgba(0,0,0,0.3); white-space:pre-wrap;'>🤖 {bot_reply}</div></div>",
+            f"<div class='chat-bubble' style='background-color:#000000; color:white; padding:10px; border-radius:15px; max-width:70%; "
+            f"white-space:pre-wrap;'>🤖 {bot_reply}</div></div>",
             unsafe_allow_html=True,
         )
 
-    # ================================
-    # TTS
-    # ================================
     components.html(f"""
         <script>
         var msg = new SpeechSynthesisUtterance(`{answer_en.replace('`','')}`);
@@ -214,22 +248,3 @@ if user_input:
         window.speechSynthesis.speak(msg);
         </script>
     """, height=0)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
