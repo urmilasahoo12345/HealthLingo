@@ -91,7 +91,12 @@ def detect_language(text: str) -> str:
     if not text:
         return "en"
 
-    # 1) Try langdetect
+    # ✅ Force English if majority characters are ASCII
+    ascii_letters = sum(1 for c in text if c.isascii() and c.isalpha())
+    if ascii_letters >= len(text) / 2:
+        return "en"
+
+    # Try langdetect
     if ld_detect:
         try:
             lang = ld_detect(text).lower()
@@ -101,7 +106,7 @@ def detect_language(text: str) -> str:
         except Exception:
             pass
 
-    # 2) Heuristics for Indian scripts
+    # Heuristics for Indian scripts
     for ch in text:
         o = ord(ch)
         if 0x0900 <= o <= 0x097F:  # Devanagari
@@ -124,11 +129,6 @@ def detect_language(text: str) -> str:
             return "ar"
         if 0x0400 <= o <= 0x04FF:  # Cyrillic
             return "ru"
-
-    # 3) ASCII letters dominant → English
-    ascii_letters = sum(1 for c in text if c.isascii() and c.isalpha())
-    if ascii_letters >= len(text) / 2:
-        return "en"
 
     return "en"
 
@@ -289,3 +289,4 @@ if bot_reply_text_for_tts:
         """,
         height=0,
     )
+
