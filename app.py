@@ -191,8 +191,8 @@ if not st.session_state.get("loading_done", False):
 
         <style>
         .loader {
-          border: 6px black #f3f3f3;
-          border-top: 6px white;
+          border: 6px SOLID Black #f3f3f3;
+          border-top: 6px SOLID White;
           border-radius: 50%;
           width: 60px;
           height: 60px;
@@ -295,7 +295,7 @@ for msg in st.session_state.messages:
     if msg["role"] == "user":
         st.markdown(
             f"<div style='display:flex; justify-content:flex-end; margin:6px;'>"
-            f"<div class='chat-bubble' style='background:#4C5E87; color:#fff; padding:10px; border-radius:15px; "
+            f"<div class='chat-bubble' style='background:#E5F3FD; color:#fff; padding:10px; border-radius:15px; "
             f"max-width:75%; white-space:pre-wrap;'>🧑 {msg['content']}</div></div>",
             unsafe_allow_html=True,
         )
