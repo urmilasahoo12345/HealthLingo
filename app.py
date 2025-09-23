@@ -270,11 +270,15 @@ for msg in st.session_state.messages:
         )
 
 # TTS (Clean text before speaking)
+# TTS (Clean text before speaking)
 if bot_reply_text_for_tts:
     import json as _json
 
-    # ✅ Remove unwanted symbols (*, _, #, backticks, etc.)
-    clean_text = re.sub(r"[*_#`]", "", bot_reply_text_for_tts)
+    # ✅ Remove unwanted symbols universally
+    clean_text = re.sub(r"[`*_#~<>|\[\]{}()]", "", bot_reply_text_for_tts)
+
+    # ✅ Also collapse multiple spaces (after removing symbols)
+    clean_text = re.sub(r"\s{2,}", " ", clean_text).strip()
 
     safe_text = _json.dumps(clean_text)
     safe_lang = tts_lang_for_reply.replace('"', "")
@@ -282,6 +286,8 @@ if bot_reply_text_for_tts:
         f"""
         <script>
         var text = {safe_text};
+        // Extra cleaning on JS side too, just in case
+        text = text.replace(/[`*_#~<>|\\[\\]{{}}()]/g, "");
         var msg = new SpeechSynthesisUtterance(text);
         msg.lang = "{safe_lang}";
         try {{
@@ -294,5 +300,6 @@ if bot_reply_text_for_tts:
         """,
         height=0,
     )
+
 
 
