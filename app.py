@@ -6,6 +6,7 @@ import streamlit as st
 from google import genai
 from deep_translator import GoogleTranslator
 import streamlit.components.v1 as components
+import re
 
 # Optional: try to import langdetect (better detection).
 try:
@@ -186,7 +187,7 @@ st.markdown(
       }
       .navbar-left { display:flex; align-items:center; }
       .navbar-left img { height:35px; margin-right:10px; }
-      .logo-text { font-size:20px; font-weight:bold; color:blue; font-family:'Segoe UI',sans-serif; }
+      .logo-text { font-size:20px; font-weight:bold; color:white; font-family:'Segoe UI',sans-serif; }
       .menu { position:relative; display:inline-block; }
       .menu-content { display:none; position:absolute; right:0; background:#fff; min-width:140px;
                       border-radius:8px; box-shadow:0 8px 16px rgba(0,0,0,0.2); padding:10px; z-index:1001; }
@@ -268,10 +269,14 @@ for msg in st.session_state.messages:
             unsafe_allow_html=True,
         )
 
-# TTS
+# TTS (Clean text before speaking)
 if bot_reply_text_for_tts:
     import json as _json
-    safe_text = _json.dumps(bot_reply_text_for_tts)
+
+    # ✅ Remove unwanted symbols (*, _, #, backticks, etc.)
+    clean_text = re.sub(r"[*_#`]", "", bot_reply_text_for_tts)
+
+    safe_text = _json.dumps(clean_text)
     safe_lang = tts_lang_for_reply.replace('"', "")
     components.html(
         f"""
@@ -289,4 +294,5 @@ if bot_reply_text_for_tts:
         """,
         height=0,
     )
+
 
