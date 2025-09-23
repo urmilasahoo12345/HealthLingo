@@ -295,7 +295,7 @@ for msg in st.session_state.messages:
     if msg["role"] == "user":
         st.markdown(
             f"<div style='display:flex; justify-content:flex-end; margin:6px;'>"
-            f"<div class='chat-bubble' style='background:#E5F3FD; color:#fff; padding:10px; border-radius:15px; "
+            f"<div class='chat-bubble' style='background:#4E9FE5; color:#fff; padding:10px; border-radius:15px; "
             f"max-width:75%; white-space:pre-wrap;'>🧑 {msg['content']}</div></div>",
             unsafe_allow_html=True,
         )
