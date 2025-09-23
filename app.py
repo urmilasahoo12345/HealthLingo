@@ -175,7 +175,45 @@ def translate_text(text: str, target_lang: str) -> str:
 # ================================
 st.set_page_config(page_title="HealthLingo", page_icon="💬", layout="wide")
 
+# ================================
+# Loading Splash Screen
+# ================================
+if not st.session_state.get("loading_done", False):
+    st.markdown(
+        """
+        <div style="display:flex; flex-direction:column; justify-content:center; align-items:center;
+                    height:100vh; background:linear-gradient(120deg,#00b09b,#96c93d,#2193b0,#6dd5ed); color:white;">
+            <img src="https://img.icons8.com/color/96/medical-doctor.png" style="width:100px; margin-bottom:20px;" />
+            <h1 style="font-family:Segoe UI, sans-serif;">HealthLingo</h1>
+            <p style="font-size:18px;">Your AI Health Assistant is starting...</p>
+            <div class="loader"></div>
+        </div>
+
+        <style>
+        .loader {
+          border: 6px black #f3f3f3;
+          border-top: 6px white;
+          border-radius: 50%;
+          width: 60px;
+          height: 60px;
+          animation: spin 1s linear infinite;
+          margin-top: 20px;
+        }
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+    time.sleep(3)  # splash delay
+    st.session_state.loading_done = True
+    st.rerun()
+
+# ================================
 # Navbar
+# ================================
 st.markdown(
     """
     <style>
@@ -207,7 +245,7 @@ st.markdown(
         <div class="menu-content">
           <a href="#">🏠 Home</a>
           <a href="#">❓ FAQs</a>
-          <a href="#">ℹ️ About</a>
+          <a href="#">ℹ About</a>
           <a href="#">📞 Contact</a>
         </div>
       </div>
@@ -257,27 +295,23 @@ for msg in st.session_state.messages:
     if msg["role"] == "user":
         st.markdown(
             f"<div style='display:flex; justify-content:flex-end; margin:6px;'>"
-            f"<div class='chat-bubble' style='background:#003366; color:#fff; padding:10px; border-radius:15px; "
+            f"<div class='chat-bubble' style='background:#4C5E87; color:#fff; padding:10px; border-radius:15px; "
             f"max-width:75%; white-space:pre-wrap;'>🧑 {msg['content']}</div></div>",
             unsafe_allow_html=True,
         )
     else:
         st.markdown(
             f"<div style='display:flex; justify-content:flex-start; margin:6px;'>"
-            f"<div class='chat-bubble' style='background:#000; color:#fff; padding:10px; border-radius:15px; "
+            f"<div class='chat-bubble' style='background:#000435; color:#fff; padding:10px; border-radius:15px; "
             f"max-width:75%; white-space:pre-wrap;'>🤖 {msg['content']}</div></div>",
             unsafe_allow_html=True,
         )
 
-# TTS (Clean text before speaking)
-# TTS (Clean text before speaking)
+# TTS
 if bot_reply_text_for_tts:
     import json as _json
 
-    # ✅ Remove unwanted symbols universally
     clean_text = re.sub(r"[`*_#~<>|\[\]{}()]", "", bot_reply_text_for_tts)
-
-    # ✅ Also collapse multiple spaces (after removing symbols)
     clean_text = re.sub(r"\s{2,}", " ", clean_text).strip()
 
     safe_text = _json.dumps(clean_text)
@@ -286,7 +320,6 @@ if bot_reply_text_for_tts:
         f"""
         <script>
         var text = {safe_text};
-        // Extra cleaning on JS side too, just in case
         text = text.replace(/[`*_#~<>|\\[\\]{{}}()]/g, "");
         var msg = new SpeechSynthesisUtterance(text);
         msg.lang = "{safe_lang}";
@@ -300,6 +333,3 @@ if bot_reply_text_for_tts:
         """,
         height=0,
     )
-
-
-
