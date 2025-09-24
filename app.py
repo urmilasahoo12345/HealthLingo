@@ -2,11 +2,11 @@
 import os
 import json
 import time
-import re
 import streamlit as st
 import google.generativeai as genai
 from deep_translator import GoogleTranslator
 import streamlit.components.v1 as components
+import re
 
 # Optional: try to import langdetect (better detection).
 try:
@@ -22,8 +22,8 @@ if not gemini_key:
     st.error("⚠ GEMINI_API_KEY not found in environment / Streamlit secrets.")
     st.stop()
 
+# Setup Gemini client
 genai.configure(api_key=gemini_key)
-
 PRIMARY_MODEL = "gemini-2.5-flash"
 BACKUP_MODEL = "gemini-1.5-flash"
 
@@ -82,8 +82,6 @@ politely say so.
 # Language detection helpers
 # ================================
 def detect_language(text: str) -> str:
-    """Detect language code (ISO 639-1).
-    Fallback and default is always English."""
     text = (text or "").strip()
     if not text:
         return "en"
@@ -93,7 +91,6 @@ def detect_language(text: str) -> str:
     if ascii_letters >= len(text) / 2:
         return "en"
 
-    # Try langdetect
     if ld_detect:
         try:
             lang = ld_detect(text).lower()
@@ -103,30 +100,18 @@ def detect_language(text: str) -> str:
         except Exception:
             pass
 
-    # Heuristics for Indian scripts
     for ch in text:
         o = ord(ch)
-        if 0x0900 <= o <= 0x097F:  # Devanagari
-            return "hi"
-        if 0x0980 <= o <= 0x09FF:  # Bengali
-            return "bn"
-        if 0x0B00 <= o <= 0x0B7F:  # Odia
-            return "or"
-        if 0x0A80 <= o <= 0x0AFF:  # Gujarati
-            return "gu"
-        if 0x0B80 <= o <= 0x0BFF:  # Tamil
-            return "ta"
-        if 0x0C00 <= o <= 0x0C7F:  # Telugu
-            return "te"
-        if 0x0C80 <= o <= 0x0CFF:  # Kannada
-            return "kn"
-        if 0x0D00 <= o <= 0x0D7F:  # Malayalam
-            return "ml"
-        if 0x0600 <= o <= 0x06FF:  # Arabic
-            return "ar"
-        if 0x0400 <= o <= 0x04FF:  # Cyrillic
-            return "ru"
-
+        if 0x0900 <= o <= 0x097F: return "hi"  # Devanagari
+        if 0x0980 <= o <= 0x09FF: return "bn"  # Bengali
+        if 0x0B00 <= o <= 0x0B7F: return "or"  # Odia
+        if 0x0A80 <= o <= 0x0AFF: return "gu"  # Gujarati
+        if 0x0B80 <= o <= 0x0BFF: return "ta"  # Tamil
+        if 0x0C00 <= o <= 0x0C7F: return "te"  # Telugu
+        if 0x0C80 <= o <= 0x0CFF: return "kn"  # Kannada
+        if 0x0D00 <= o <= 0x0D7F: return "ml"  # Malayalam
+        if 0x0600 <= o <= 0x06FF: return "ar"  # Arabic
+        if 0x0400 <= o <= 0x04FF: return "ru"  # Cyrillic
     return "en"
 
 
@@ -203,7 +188,7 @@ st.markdown(
         <div class="menu-content">
           <a href="#">🏠 Home</a>
           <a href="#">❓ FAQs</a>
-          <a href="#">ℹ️ About</a>
+          <a href="#">ℹ About</a>
           <a href="#">📞 Contact</a>
         </div>
       </div>
@@ -232,14 +217,12 @@ tts_lang_for_reply = "en-US"
 
 if user_input:
     detected_lang = detect_language(user_input)
-
     st.session_state.messages.append({"role": "user", "content": user_input})
 
     answer_en = find_answer_from_faqs(user_input) or fetch_from_gemini(user_input)
     if not answer_en:
         answer_en = "Sorry, I cannot fetch this right now."
 
-    # Translate only if NOT English
     translated_answer = (
         answer_en if detected_lang == "en" else translate_text(answer_en, detected_lang)
     )
@@ -265,17 +248,20 @@ for msg in st.session_state.messages:
             unsafe_allow_html=True,
         )
 
-# TTS (clean symbols before reading)
+# TTS (Clean text before speaking)
 if bot_reply_text_for_tts:
     import json as _json
 
-    clean_text = re.sub(r"[^\w\s.,!?]", "", bot_reply_text_for_tts)  # remove * and symbols
+    clean_text = re.sub(r"[`*_#~<>|\[\]{}()]", "", bot_reply_text_for_tts)
+    clean_text = re.sub(r"\s{2,}", " ", clean_text).strip()
+
     safe_text = _json.dumps(clean_text)
     safe_lang = tts_lang_for_reply.replace('"', "")
     components.html(
         f"""
         <script>
         var text = {safe_text};
+        text = text.replace(/[`*_#~<>|\\[\\]{{}}()]/g, "");
         var msg = new SpeechSynthesisUtterance(text);
         msg.lang = "{safe_lang}";
         try {{
@@ -288,3 +274,4 @@ if bot_reply_text_for_tts:
         """,
         height=0,
     )
+
