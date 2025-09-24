@@ -2,11 +2,11 @@
 import os
 import json
 import time
+import re
 import streamlit as st
-from google import genai
+import google.generativeai as genai
 from deep_translator import GoogleTranslator
 import streamlit.components.v1 as components
-import re
 
 # Optional: try to import langdetect (better detection).
 try:
@@ -22,8 +22,8 @@ if not gemini_key:
     st.error("⚠ GEMINI_API_KEY not found in environment / Streamlit secrets.")
     st.stop()
 
-# Setup Gemini client
-client = genai.Client(api_key=gemini_key)
+genai.configure(api_key=gemini_key)
+
 PRIMARY_MODEL = "gemini-2.5-flash"
 BACKUP_MODEL = "gemini-1.5-flash"
 
@@ -62,20 +62,16 @@ politely say so.
 """
     for attempt in range(retries):
         try:
-            response = client.models.generate_content(
-                model=PRIMARY_MODEL,
-                contents=prompt,
-            )
+            model = genai.GenerativeModel(PRIMARY_MODEL)
+            response = model.generate_content(prompt)
             return response.text.strip()
         except Exception as e:
             if "503" in str(e) and attempt < retries - 1:
                 time.sleep(1.5)
                 continue
             try:
-                response = client.models.generate_content(
-                    model=BACKUP_MODEL,
-                    contents=prompt,
-                )
+                model = genai.GenerativeModel(BACKUP_MODEL)
+                response = model.generate_content(prompt)
                 return response.text.strip()
             except Exception as e2:
                 return f"⚠ Error fetching from Gemini: {str(e2)}"
@@ -175,45 +171,7 @@ def translate_text(text: str, target_lang: str) -> str:
 # ================================
 st.set_page_config(page_title="HealthLingo", page_icon="💬", layout="wide")
 
-# ================================
-# Loading Splash Screen
-# ================================
-if not st.session_state.get("loading_done", False):
-    st.markdown(
-        """
-        <div style="display:flex; flex-direction:column; justify-content:center; align-items:center;
-                    height:100vh; background:linear-gradient(120deg,#00b09b,#96c93d,#2193b0,#6dd5ed); color:white;">
-            <img src="https://img.icons8.com/color/96/medical-doctor.png" style="width:100px; margin-bottom:20px;" />
-            <h1 style="font-family:Segoe UI, sans-serif;">HealthLingo</h1>
-            <p style="font-size:18px;">Your AI Health Assistant is starting...</p>
-            <div class="loader"></div>
-        </div>
-
-        <style>
-        .loader {
-          border: 6px SOLID Black #f3f3f3;
-          border-top: 6px SOLID White;
-          border-radius: 50%;
-          width: 60px;
-          height: 60px;
-          animation: spin 1s linear infinite;
-          margin-top: 20px;
-        }
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
-    time.sleep(3)  # splash delay
-    st.session_state.loading_done = True
-    st.rerun()
-
-# ================================
 # Navbar
-# ================================
 st.markdown(
     """
     <style>
@@ -245,7 +203,7 @@ st.markdown(
         <div class="menu-content">
           <a href="#">🏠 Home</a>
           <a href="#">❓ FAQs</a>
-          <a href="#">ℹ About</a>
+          <a href="#">ℹ️ About</a>
           <a href="#">📞 Contact</a>
         </div>
       </div>
@@ -295,32 +253,29 @@ for msg in st.session_state.messages:
     if msg["role"] == "user":
         st.markdown(
             f"<div style='display:flex; justify-content:flex-end; margin:6px;'>"
-            f"<div class='chat-bubble' style='background:#4E9FE5; color:#fff; padding:10px; border-radius:15px; "
+            f"<div class='chat-bubble' style='background:#003366; color:#fff; padding:10px; border-radius:15px; "
             f"max-width:75%; white-space:pre-wrap;'>🧑 {msg['content']}</div></div>",
             unsafe_allow_html=True,
         )
     else:
         st.markdown(
             f"<div style='display:flex; justify-content:flex-start; margin:6px;'>"
-            f"<div class='chat-bubble' style='background:#000435; color:#fff; padding:10px; border-radius:15px; "
+            f"<div class='chat-bubble' style='background:#000; color:#fff; padding:10px; border-radius:15px; "
             f"max-width:75%; white-space:pre-wrap;'>🤖 {msg['content']}</div></div>",
             unsafe_allow_html=True,
         )
 
-# TTS
+# TTS (clean symbols before reading)
 if bot_reply_text_for_tts:
     import json as _json
 
-    clean_text = re.sub(r"[`*_#~<>|\[\]{}()]", "", bot_reply_text_for_tts)
-    clean_text = re.sub(r"\s{2,}", " ", clean_text).strip()
-
+    clean_text = re.sub(r"[^\w\s.,!?]", "", bot_reply_text_for_tts)  # remove * and symbols
     safe_text = _json.dumps(clean_text)
     safe_lang = tts_lang_for_reply.replace('"', "")
     components.html(
         f"""
         <script>
         var text = {safe_text};
-        text = text.replace(/[`*_#~<>|\\[\\]{{}}()]/g, "");
         var msg = new SpeechSynthesisUtterance(text);
         msg.lang = "{safe_lang}";
         try {{
