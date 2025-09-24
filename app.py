@@ -3,7 +3,7 @@ import os
 import json
 import time
 import streamlit as st
-import google.generativeai as genai
+import google.generativeai as genai   # ✅ Correct import
 from deep_translator import GoogleTranslator
 import streamlit.components.v1 as components
 import re
@@ -22,9 +22,9 @@ if not gemini_key:
     st.error("⚠ GEMINI_API_KEY not found in environment / Streamlit secrets.")
     st.stop()
 
-# Setup Gemini client
+# Setup Gemini client ✅
 genai.configure(api_key=gemini_key)
-PRIMARY_MODEL = "gemini-2.5-flash"
+PRIMARY_MODEL = "gemini-2.0-flash"
 BACKUP_MODEL = "gemini-1.5-flash"
 
 # ================================
@@ -82,6 +82,7 @@ politely say so.
 # Language detection helpers
 # ================================
 def detect_language(text: str) -> str:
+    """Detect language code (ISO 639-1)."""
     text = (text or "").strip()
     if not text:
         return "en"
@@ -91,6 +92,7 @@ def detect_language(text: str) -> str:
     if ascii_letters >= len(text) / 2:
         return "en"
 
+    # Try langdetect
     if ld_detect:
         try:
             lang = ld_detect(text).lower()
@@ -100,18 +102,30 @@ def detect_language(text: str) -> str:
         except Exception:
             pass
 
+    # Heuristics for Indian scripts
     for ch in text:
         o = ord(ch)
-        if 0x0900 <= o <= 0x097F: return "hi"  # Devanagari
-        if 0x0980 <= o <= 0x09FF: return "bn"  # Bengali
-        if 0x0B00 <= o <= 0x0B7F: return "or"  # Odia
-        if 0x0A80 <= o <= 0x0AFF: return "gu"  # Gujarati
-        if 0x0B80 <= o <= 0x0BFF: return "ta"  # Tamil
-        if 0x0C00 <= o <= 0x0C7F: return "te"  # Telugu
-        if 0x0C80 <= o <= 0x0CFF: return "kn"  # Kannada
-        if 0x0D00 <= o <= 0x0D7F: return "ml"  # Malayalam
-        if 0x0600 <= o <= 0x06FF: return "ar"  # Arabic
-        if 0x0400 <= o <= 0x04FF: return "ru"  # Cyrillic
+        if 0x0900 <= o <= 0x097F:  # Devanagari
+            return "hi"
+        if 0x0980 <= o <= 0x09FF:  # Bengali
+            return "bn"
+        if 0x0B00 <= o <= 0x0B7F:  # Odia
+            return "or"
+        if 0x0A80 <= o <= 0x0AFF:  # Gujarati
+            return "gu"
+        if 0x0B80 <= o <= 0x0BFF:  # Tamil
+            return "ta"
+        if 0x0C00 <= o <= 0x0C7F:  # Telugu
+            return "te"
+        if 0x0C80 <= o <= 0x0CFF:  # Kannada
+            return "kn"
+        if 0x0D00 <= o <= 0x0D7F:  # Malayalam
+            return "ml"
+        if 0x0600 <= o <= 0x06FF:  # Arabic
+            return "ar"
+        if 0x0400 <= o <= 0x04FF:  # Cyrillic
+            return "ru"
+
     return "en"
 
 
@@ -156,7 +170,45 @@ def translate_text(text: str, target_lang: str) -> str:
 # ================================
 st.set_page_config(page_title="HealthLingo", page_icon="💬", layout="wide")
 
+# ================================
+# Loading Splash Screen
+# ================================
+if not st.session_state.get("loading_done", False):
+    st.markdown(
+        """
+        <div style="display:flex; flex-direction:column; justify-content:center; align-items:center;
+                    height:100vh; background:linear-gradient(120deg,#00b09b,#96c93d,#2193b0,#6dd5ed); color:white;">
+            <img src="https://img.icons8.com/color/96/medical-doctor.png" style="width:100px; margin-bottom:20px;" />
+            <h1 style="font-family:Segoe UI, sans-serif;">HealthLingo</h1>
+            <p style="font-size:18px;">Your AI Health Assistant is starting...</p>
+            <div class="loader"></div>
+        </div>
+
+        <style>
+        .loader {
+          border: 6px solid black #f3f3f3;
+          border-top: 6px solid white;
+          border-radius: 50%;
+          width: 60px;
+          height: 60px;
+          animation: spin 1s linear infinite;
+          margin-top: 20px;
+        }
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+    time.sleep(3)  # splash delay
+    st.session_state.loading_done = True
+    st.rerun()
+
+# ================================
 # Navbar
+# ================================
 st.markdown(
     """
     <style>
@@ -217,12 +269,14 @@ tts_lang_for_reply = "en-US"
 
 if user_input:
     detected_lang = detect_language(user_input)
+
     st.session_state.messages.append({"role": "user", "content": user_input})
 
     answer_en = find_answer_from_faqs(user_input) or fetch_from_gemini(user_input)
     if not answer_en:
         answer_en = "Sorry, I cannot fetch this right now."
 
+    # Translate only if NOT English
     translated_answer = (
         answer_en if detected_lang == "en" else translate_text(answer_en, detected_lang)
     )
@@ -236,19 +290,21 @@ for msg in st.session_state.messages:
     if msg["role"] == "user":
         st.markdown(
             f"<div style='display:flex; justify-content:flex-end; margin:6px;'>"
-            f"<div class='chat-bubble' style='background:#003366; color:#fff; padding:10px; border-radius:15px; "
+            f"<div class='chat-bubble' style='background:#48CAE4; color:#fff; padding:10px; border-radius:15px; "
             f"max-width:75%; white-space:pre-wrap;'>🧑 {msg['content']}</div></div>",
             unsafe_allow_html=True,
         )
     else:
         st.markdown(
             f"<div style='display:flex; justify-content:flex-start; margin:6px;'>"
-            f"<div class='chat-bubble' style='background:#000; color:#fff; padding:10px; border-radius:15px; "
+            f"<div class='chat-bubble' style='background:#01153E; color:#fff; padding:10px; border-radius:15px; "
             f"max-width:75%; white-space:pre-wrap;'>🤖 {msg['content']}</div></div>",
             unsafe_allow_html=True,
         )
 
-# TTS (Clean text before speaking)
+# ================================
+# TTS
+# ================================
 if bot_reply_text_for_tts:
     import json as _json
 
